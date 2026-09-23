@@ -1,6 +1,7 @@
 import type { Session } from '@supabase/supabase-js';
 import { createContext, useContext, useEffect, useState, type PropsWithChildren } from 'react';
 
+import { ensureUserProfile } from '@/lib/profile';
 import { supabase } from '@/lib/supabase';
 
 type AuthContextValue = {
@@ -24,8 +25,26 @@ export function AuthProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     // Check for a session already persisted in AsyncStorage from a
     // previous app launch.
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
+    supabase.auth.getSession().then(async ({ data }) => {
+      let current = data.session;
+
+      // getSession only reads the token saved on the phone -- it can't tell
+      // that the account behind it was deleted (e.g. removed in the Supabase
+      // dashboard), and a deleted account's token keeps "working" until it
+      // expires. Ask the server, and sign out only if it says the account is
+      // definitively gone. Network errors (status 0 / 5xx) are ignored so a
+      // flaky connection doesn't log anyone out.
+      if (current) {
+        const { error } = await supabase.auth.getUser();
+        if (error && error.status !== undefined && [401, 403, 404].includes(error.status)) {
+          await supabase.auth.signOut();
+          current = null;
+        } else {
+          await ensureUserProfile(current.user.id, current.user.email);
+        }
+      }
+
+      setSession(current);
       setLoading(false);
     });
 
@@ -35,6 +54,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession);
+      if (newSession) void ensureUserProfile(newSession.user.id, newSession.user.email);
     });
 
     return () => subscription.unsubscribe();
