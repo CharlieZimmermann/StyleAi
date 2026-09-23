@@ -1,0 +1,43 @@
+# Secrets: never commit these (Supabase secret key, API keys, etc.)
+.env
+.env.*
+!.env.example
+*.pem
+*.p8
+*.p12
+*.key
+
+# Dependencies
+node_modules/
+
+# Expo / React Native
+.expo/
+.expo-shared/
+dist/
+web-build/
+ios/
+android/
+*.jks
+*.mobileprovision
+expo-env.d.ts
+
+# Logs and caches
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+*.log
+.metro-health-check*
+
+# Supabase local development files
+supabase/.branches/
+supabase/.temp/
+supabase/.env
+supabase/functions/.env
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.swp
