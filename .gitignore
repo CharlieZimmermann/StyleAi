@@ -27,6 +27,11 @@ yarn-debug.*
 yarn-error.*
 *.log
 .metro-health-check*
+*.orig.*
+*.tsbuildinfo
+
+# Android native build tooling
+.kotlin/
 
 # Supabase local development files
 supabase/.branches/
