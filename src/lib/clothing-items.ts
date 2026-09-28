@@ -57,6 +57,14 @@ export async function createClothingItem(userId: string, item: NewClothingItem) 
   if (error) throw error;
 }
 
+/** Cheap existence check, so a brand-new user can be shown a friendly
+ * "add your first item" prompt instead of an outfit-generation error. */
+export async function hasAnyClothingItems(): Promise<boolean> {
+  const { data, error } = await supabase.from('clothing_items').select('id').limit(1);
+  if (error) throw error;
+  return (data?.length ?? 0) > 0;
+}
+
 /**
  * Fetches the signed-in user's closet, most recent first, and attaches a
  * temporary signed URL to each item so the (private) photo can actually be

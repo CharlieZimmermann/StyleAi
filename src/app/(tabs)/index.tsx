@@ -1,5 +1,5 @@
 import * as Location from 'expo-location';
-import { useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -11,12 +11,13 @@ import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, Spacing } from '@/constants/theme';
 import { useAuth } from '@/context/auth-context';
 import { useTheme } from '@/hooks/use-theme';
+import { hasAnyClothingItems } from '@/lib/clothing-items';
 import { errorMessage } from '@/lib/errors';
 import { generateOutfit, getTodaysOutfit, listEventOutfits } from '@/lib/outfits';
 import { getHomeCity, setHomeCity } from '@/lib/profile';
 import type { Outfit, WeatherLocation } from '@/types/outfit';
 
-type Status = 'loading' | 'generating' | 'ready' | 'needs-city' | 'error';
+type Status = 'loading' | 'generating' | 'ready' | 'needs-city' | 'error' | 'empty-closet';
 
 /**
  * Where to get the weather: the phone's GPS if the user allows it, otherwise
@@ -93,7 +94,11 @@ export default function TodayScreen() {
     [userId, applyOutfit],
   );
 
-  // Show today's outfit if one exists; otherwise generate it once automatically.
+  // Show today's outfit if one exists; otherwise generate it once
+  // automatically -- unless the closet is empty, in which case generating
+  // would just fail, so show a welcoming prompt instead. The closet-emptiness
+  // check runs on every focus (not just once), so returning from the Add tab
+  // with a first item picks up the auto-generate on the next visit.
   const load = useCallback(async () => {
     if (!userId || busy.current) return;
     busy.current = true;
@@ -102,10 +107,21 @@ export default function TodayScreen() {
       if (existing) {
         applyOutfit(existing);
         setStatus('ready');
-      } else if (!autoTried.current) {
+        return;
+      }
+      if (outfitRef.current) {
+        // Already generated this session (e.g. after a regenerate) -- keep it.
+        setStatus('ready');
+        return;
+      }
+      if (!(await hasAnyClothingItems())) {
+        setStatus('empty-closet');
+        return;
+      }
+      if (!autoTried.current) {
         autoTried.current = true;
         await generate();
-      } else if (outfitRef.current === null) {
+      } else {
         setStatus((current) => (current === 'loading' ? 'ready' : current));
       }
     } catch (err) {
@@ -206,6 +222,19 @@ export default function TodayScreen() {
             </ThemedView>
           )}
 
+          {status === 'empty-closet' && (
+            <ThemedView type="backgroundElement" style={styles.card}>
+              <ThemedText type="smallBold">Welcome to Closet!</ThemedText>
+              <ThemedText type="small" themeColor="textSecondary">
+                Add a few items -- at least a top, a bottom (or a dress), and shoes -- and
+                you&apos;ll get your first AI-picked outfit for today&apos;s weather.
+              </ThemedText>
+              <Pressable style={styles.primaryButton} onPress={() => router.push('/add-item')}>
+                <ThemedText style={styles.primaryButtonText}>Add an item</ThemedText>
+              </Pressable>
+            </ThemedView>
+          )}
+
           {status === 'needs-city' && (
             <ThemedView type="backgroundElement" style={styles.card}>
               <ThemedText type="smallBold">Where are you?</ThemedText>
@@ -259,42 +288,46 @@ export default function TodayScreen() {
             </>
           )}
 
-          <ThemedView style={styles.divider} />
+          {status !== 'empty-closet' && (
+            <>
+              <ThemedView style={styles.divider} />
 
-          <ThemedText type="smallBold">Outfit for an occasion</ThemedText>
-          <ThemedView style={styles.eventRow}>
-            <TextInput
-              style={[styles.input, styles.eventInput, { backgroundColor: theme.backgroundElement, color: theme.text }]}
-              placeholder="e.g. job interview, golf outing"
-              placeholderTextColor={theme.textSecondary}
-              value={eventPromptInput}
-              onChangeText={setEventPromptInput}
-              returnKeyType="done"
-              onSubmitEditing={handleGenerateEvent}
-            />
-            <Pressable
-              style={[
-                styles.eventButton,
-                (!eventPromptInput.trim() || eventGenerating) && styles.buttonDisabled,
-              ]}
-              onPress={handleGenerateEvent}
-              disabled={!eventPromptInput.trim() || eventGenerating}>
-              {eventGenerating ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <ThemedText style={styles.primaryButtonText}>Get outfit</ThemedText>
+              <ThemedText type="smallBold">Outfit for an occasion</ThemedText>
+              <ThemedView style={styles.eventRow}>
+                <TextInput
+                  style={[styles.input, styles.eventInput, { backgroundColor: theme.backgroundElement, color: theme.text }]}
+                  placeholder="e.g. job interview, golf outing"
+                  placeholderTextColor={theme.textSecondary}
+                  value={eventPromptInput}
+                  onChangeText={setEventPromptInput}
+                  returnKeyType="done"
+                  onSubmitEditing={handleGenerateEvent}
+                />
+                <Pressable
+                  style={[
+                    styles.eventButton,
+                    (!eventPromptInput.trim() || eventGenerating) && styles.buttonDisabled,
+                  ]}
+                  onPress={handleGenerateEvent}
+                  disabled={!eventPromptInput.trim() || eventGenerating}>
+                  {eventGenerating ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <ThemedText style={styles.primaryButtonText}>Get outfit</ThemedText>
+                  )}
+                </Pressable>
+              </ThemedView>
+              {eventError && (
+                <ThemedText type="small" style={styles.errorText}>
+                  {eventError}
+                </ThemedText>
               )}
-            </Pressable>
-          </ThemedView>
-          {eventError && (
-            <ThemedText type="small" style={styles.errorText}>
-              {eventError}
-            </ThemedText>
-          )}
 
-          {eventOutfits.map((eventOutfit) => (
-            <OutfitCard key={eventOutfit.id} outfit={eventOutfit} onChange={handleEventOutfitChange} />
-          ))}
+              {eventOutfits.map((eventOutfit) => (
+                <OutfitCard key={eventOutfit.id} outfit={eventOutfit} onChange={handleEventOutfitChange} />
+              ))}
+            </>
+          )}
 
           <ExternalLink href="https://open-meteo.com/">
             <ThemedText type="small" themeColor="textSecondary" style={styles.centerText}>

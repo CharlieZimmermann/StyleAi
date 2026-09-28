@@ -1,56 +1,53 @@
-# Welcome to your Expo app 👋
+# Closet
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+An AI-powered wardrobe app: photograph your clothes, get an AI-tagged digital
+closet, and receive a daily outfit suggestion based on the weather and what
+you actually own — plus outfits for specific occasions, favorites, and a
+wardrobe gap-finder that suggests what to buy next.
 
-## Get started
+## Stack
 
-1. Install dependencies
+- **App:** Expo (React Native) + TypeScript, Expo Router
+- **Backend:** Supabase (Postgres, Auth, Storage, Edge Functions) — no
+  separate server
+- **AI:** Google Gemini (vision for item tagging, text for outfit/gap
+  suggestions), called from Edge Functions so the API key never reaches the
+  app
+- **Weather:** [Open-Meteo](https://open-meteo.com/) (free, no API key)
 
-   ```bash
-   npm install
-   ```
+See [`CLAUDE.md`](./CLAUDE.md) for the non-obvious architectural details
+(RLS policies, the storage path convention, the model-fallback pattern in
+the Edge Functions, etc.) and `docs/technical-architecture.md` for the
+original design doc.
 
-2. Start the app
+## Prerequisites
 
-   ```bash
-   npx expo start
-   ```
+- Node.js and npm
+- The [Supabase CLI](https://supabase.com/docs/guides/cli) (`npx supabase`
+  works too — no separate install needed)
+- A Supabase project with `supabase/schema.sql` applied (via the SQL Editor)
+  and the project linked locally (`supabase link --project-ref ...`)
+- A free [Gemini API key](https://aistudio.google.com/apikey), set as an Edge
+  Function secret: `supabase secrets set GEMINI_API_KEY=...`
+- Expo Go on your phone, for the fastest way to run it
 
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Setup
 
 ```bash
-npm run reset-project
+npm install
+cp .env.example .env.local   # fill in your Supabase project URL + publishable key
+npx supabase functions deploy tag-clothing-item
+npx supabase functions deploy generate-outfit
+npx supabase functions deploy suggest-wardrobe-gaps
+npx expo start
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Then scan the QR code with Expo Go (iOS) or the Expo Go app (Android).
 
-### Other setup steps
+## Scripts
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+- `npm start` / `npx expo start` — run the dev server
+- `npm run lint` — ESLint
+- `npx tsc --noEmit` — typecheck
+- `npx deno check supabase/functions/*/index.ts` — typecheck the Edge
+  Functions (they're Deno, not part of the app's TypeScript project)
