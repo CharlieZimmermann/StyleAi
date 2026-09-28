@@ -34,6 +34,12 @@
         }
       ],
       [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Closet uses your approximate location to check the weather and suggest what to wear."
+        }
+      ],
+      [
         "expo-image-picker",
         {
           "photosPermission": "Closet uses your photo library so you can add clothing items from existing photos.",

@@ -13,3 +13,19 @@ export async function ensureUserProfile(userId: string, email: string | undefine
   const { error } = await supabase.from('users').upsert({ id: userId, email: email ?? '' });
   if (error) console.error('ensureUserProfile failed:', error);
 }
+
+/** The city to fall back on for weather when location permission is denied. */
+export async function getHomeCity(userId: string): Promise<string | null> {
+  const { data, error } = await supabase
+    .from('users')
+    .select('home_city')
+    .eq('id', userId)
+    .maybeSingle();
+  if (error) throw error;
+  return data?.home_city ?? null;
+}
+
+export async function setHomeCity(userId: string, city: string) {
+  const { error } = await supabase.from('users').update({ home_city: city }).eq('id', userId);
+  if (error) throw error;
+}

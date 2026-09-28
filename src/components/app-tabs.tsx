@@ -13,6 +13,11 @@ export default function AppTabs() {
       indicatorColor={colors.backgroundElement}
       labelStyle={{ selected: { color: colors.text } }}>
       <NativeTabs.Trigger name="index">
+        <NativeTabs.Trigger.Label>Today</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="sun.max.fill" />
+      </NativeTabs.Trigger>
+
+      <NativeTabs.Trigger name="closet">
         <NativeTabs.Trigger.Label>Closet</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf="square.grid.2x2" />
       </NativeTabs.Trigger>

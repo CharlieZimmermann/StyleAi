@@ -18,3 +18,7 @@ export const CLOTHING_CATEGORIES = [
 ] as const;
 
 export const SEASONS = ['spring', 'summer', 'fall', 'winter', 'all_season'] as const;
+
+// How outfit generation groups categories into outfit "slots".
+export const TOP_CATEGORIES = ['t_shirt', 'shirt', 'sweatshirt', 'hoodie'];
+export const BOTTOM_CATEGORIES = ['pants', 'formal_pants', 'shorts'];

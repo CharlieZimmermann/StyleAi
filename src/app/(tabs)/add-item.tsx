@@ -117,7 +117,7 @@ export default function AddItemScreen() {
         aiTags: aiDescription ? { description: aiDescription } : null,
       });
       resetForm();
-      router.navigate('/'); // back to the Closet tab
+      router.navigate('/closet'); // back to the Closet tab
     } catch (err) {
       // Don't leave an orphaned photo in Storage if the row never got saved.
       if (uploadedPath) await deleteClothingImage(uploadedPath).catch(() => {});

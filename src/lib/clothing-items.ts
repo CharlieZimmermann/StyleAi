@@ -68,12 +68,24 @@ export async function listClothingItems(): Promise<(ClothingItem & { signedUrl: 
     .order('created_at', { ascending: false });
 
   if (error) throw error;
-  if (!items || items.length === 0) return [];
+  return attachSignedUrls((items ?? []) as ClothingItem[]);
+}
 
-  const paths = items.map((item) => item.image_url);
+/**
+ * Adds a temporary signed URL to each item so its (private) photo can be
+ * displayed. Signed URLs expire, so don't cache the result across screens.
+ */
+export async function attachSignedUrls(
+  items: ClothingItem[],
+): Promise<(ClothingItem & { signedUrl: string | null })[]> {
+  if (items.length === 0) return [];
+
   const { data: signedUrls } = await supabase.storage
     .from(BUCKET)
-    .createSignedUrls(paths, SIGNED_URL_TTL_SECONDS);
+    .createSignedUrls(
+      items.map((item) => item.image_url),
+      SIGNED_URL_TTL_SECONDS,
+    );
 
   const urlByPath = new Map((signedUrls ?? []).map((entry) => [entry.path, entry.signedUrl]));
 

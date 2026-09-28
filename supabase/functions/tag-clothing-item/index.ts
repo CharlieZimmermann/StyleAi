@@ -15,25 +15,7 @@
 
 import { corsHeaders } from '../_shared/cors.ts';
 import { CLOTHING_CATEGORIES, SEASONS } from '../_shared/clothing-schema.ts';
-
-// Tried in order. The newest model is best but is also the busiest, so when
-// it (or any model) is overloaded, rate-limited, or retired we fall through
-// to the next instead of failing the whole request. Gemini's lineup moves
-// fast (new versions every couple of months as of 2026) -- see
-// https://ai.google.dev/gemini-api/docs/models to refresh this list.
-const GEMINI_MODELS = [
-  'gemini-3.8-flash',
-  'gemini-3.6-flash',
-  'gemini-3.5-flash-lite',
-  'gemini-3.1-flash-lite',
-];
-
-// HTTP statuses where trying a different model can help. Anything else
-// (e.g. 400 bad request, 403 bad key) would fail on every model, so stop.
-const RETRYABLE_STATUSES = new Set([404, 429, 500, 503, 504]);
-
-const geminiUrl = (model: string) =>
-  `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+import { generateJson } from '../_shared/gemini.ts';
 
 // Keep inline image payloads well under Gemini's 20MB request limit and
 // fast to upload over a phone connection. The app resizes/compresses photos
@@ -109,96 +91,37 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: 'Server is not configured for AI tagging yet.' }, 500);
   }
 
-  const requestBody = JSON.stringify({
-    contents: [
-      {
-        parts: [{ text: PROMPT }, { inlineData: { mimeType: 'image/jpeg', data: imageBase64 } }],
-      },
-    ],
-    generationConfig: {
-      responseMimeType: 'application/json',
-      responseSchema: RESPONSE_SCHEMA,
+  const result = await generateJson<SuggestedTags>({
+    apiKey,
+    parts: [{ text: PROMPT }, { inlineData: { mimeType: 'image/jpeg', data: imageBase64 } }],
+    schema: RESPONSE_SCHEMA,
+    // Defensive re-check: the schema's `enum` constraint should already
+    // guarantee this, but a fallback here is cheap insurance against a model
+    // change or a schema-enforcement slip.
+    validate: (data) => {
+      const tags = data as Partial<SuggestedTags> | null;
+      if (
+        !tags ||
+        !CLOTHING_CATEGORIES.includes(tags.category as SuggestedTags['category']) ||
+        !SEASONS.includes(tags.season as SuggestedTags['season']) ||
+        typeof tags.color !== 'string' ||
+        typeof tags.description !== 'string'
+      ) {
+        return { ok: false, reason: 'unexpected response shape' };
+      }
+      return { ok: true, value: tags as SuggestedTags };
     },
   });
 
-  // Walk the model list until one answers. `failures` records what each
-  // model said, so a total failure is diagnosable from the app.
-  let geminiResponse: Response | null = null;
-  const failures: string[] = [];
-
-  for (const model of GEMINI_MODELS) {
-    let response: Response;
-    try {
-      response = await fetch(geminiUrl(model), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-goog-api-key': apiKey,
-        },
-        body: requestBody,
-      });
-    } catch (err) {
-      console.error(`Network error calling ${model}:`, err);
-      failures.push(`${model}: network error`);
-      continue;
-    }
-
-    if (response.ok) {
-      geminiResponse = response;
-      break;
-    }
-
-    const errorText = await response.text();
-    console.error(`${model} error:`, response.status, errorText);
-    // `failures` is safe to expose: it's Gemini's own status/message and
-    // never contains our API key.
-    failures.push(`${model} ${response.status}: ${errorText.slice(0, 120)}`);
-
-    if (!RETRYABLE_STATUSES.has(response.status)) break;
-  }
-
-  if (!geminiResponse) {
+  if (!result.ok) {
     return jsonResponse(
       {
         error: 'The AI tagging service is busy right now. Try again in a moment.',
-        detail: failures.join(' | '),
+        detail: result.failures.join(' | '),
       },
       502,
     );
   }
 
-  const result = await geminiResponse.json();
-  const candidate = result.candidates?.[0];
-  const rawText: string | undefined = candidate?.content?.parts?.[0]?.text;
-
-  if (!rawText) {
-    console.error('Gemini returned no usable content:', JSON.stringify(result));
-    return jsonResponse(
-      { error: "Couldn't identify this item from the photo. Try a clearer, well-lit shot." },
-      422,
-    );
-  }
-
-  let tags: SuggestedTags;
-  try {
-    tags = JSON.parse(rawText);
-  } catch (err) {
-    console.error('Failed to parse Gemini JSON output:', rawText, err);
-    return jsonResponse({ error: 'The AI response was malformed. Try again.' }, 502);
-  }
-
-  // Defensive re-check: the schema's `enum` constraint should already
-  // guarantee this, but a fallback here is cheap insurance against a model
-  // change or a schema-enforcement slip.
-  if (
-    !CLOTHING_CATEGORIES.includes(tags.category) ||
-    !SEASONS.includes(tags.season) ||
-    typeof tags.color !== 'string' ||
-    typeof tags.description !== 'string'
-  ) {
-    console.error('Gemini output failed validation:', tags);
-    return jsonResponse({ error: 'Got an unexpected response shape from the AI. Try again.' }, 502);
-  }
-
-  return jsonResponse(tags satisfies SuggestedTags);
+  return jsonResponse(result.value);
 });

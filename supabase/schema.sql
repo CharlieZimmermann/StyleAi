@@ -239,6 +239,17 @@ create policy "delete own images" on storage.objects
 
 
 -- =====================================================================
+-- 5b. CHANGES AFTER THE INITIAL SETUP
+--     Each block is safe to re-run ("if not exists"). On a project where
+--     sections 1-5 already ran, paste ONLY these blocks into the SQL Editor.
+-- =====================================================================
+
+-- Step 4: the AI's short explanation of why it picked an outfit, shown on
+-- the Today screen.
+alter table public.outfits add column if not exists ai_reason text;
+
+
+-- =====================================================================
 -- 6. HOW TO TEST ROW LEVEL SECURITY (manual; leave commented out)
 --
 -- WHY A SPECIAL RECIPE: the SQL Editor runs as the privileged "postgres"
