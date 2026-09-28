@@ -1,5 +1,5 @@
 import { Image } from 'expo-image';
-import { useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Linking, Pressable, StyleSheet, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -217,30 +217,32 @@ export default function ClosetScreen() {
                 renderItem={({ item }) => {
                   const label = clothingItemLabel(item);
                   return (
-                    <ThemedView type="backgroundElement" style={[styles.card, { width: cardWidth }]}>
-                      {item.signedUrl ? (
-                        <Image
-                          source={{ uri: item.signedUrl }}
-                          style={[
-                            styles.cardImage,
-                            { width: cardWidth, backgroundColor: theme.backgroundSelected },
-                          ]}
-                          contentFit="cover"
-                        />
-                      ) : (
-                        <ThemedView type="backgroundSelected" style={[styles.cardImage, { width: cardWidth }]} />
-                      )}
-                      <ThemedView style={styles.cardLabel}>
-                        <ThemedText type="smallBold" numberOfLines={1}>
-                          {label.title}
-                        </ThemedText>
-                        {label.subtitle && (
-                          <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
-                            {label.subtitle}
-                          </ThemedText>
+                    <Pressable onPress={() => router.push(`/closet/${item.id}`)}>
+                      <ThemedView type="backgroundElement" style={[styles.card, { width: cardWidth }]}>
+                        {item.signedUrl ? (
+                          <Image
+                            source={{ uri: item.signedUrl }}
+                            style={[
+                              styles.cardImage,
+                              { width: cardWidth, backgroundColor: theme.backgroundSelected },
+                            ]}
+                            contentFit="cover"
+                          />
+                        ) : (
+                          <ThemedView type="backgroundSelected" style={[styles.cardImage, { width: cardWidth }]} />
                         )}
+                        <ThemedView style={styles.cardLabel}>
+                          <ThemedText type="smallBold" numberOfLines={1}>
+                            {label.title}
+                          </ThemedText>
+                          {label.subtitle && (
+                            <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+                              {label.subtitle}
+                            </ThemedText>
+                          )}
+                        </ThemedView>
                       </ThemedView>
-                    </ThemedView>
+                    </Pressable>
                   );
                 }}
               />

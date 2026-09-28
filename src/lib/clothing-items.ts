@@ -73,6 +73,42 @@ export async function listClothingItems(): Promise<(ClothingItem & { signedUrl: 
   return attachSignedUrls((items ?? []) as ClothingItem[]);
 }
 
+/** One item, with a signed URL for its (private) photo, or null if it's gone. */
+export async function getClothingItem(
+  id: string,
+): Promise<(ClothingItem & { signedUrl: string | null }) | null> {
+  const { data, error } = await supabase.from('clothing_items').select('*').eq('id', id).maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  const [withUrl] = await attachSignedUrls([data as ClothingItem]);
+  return withUrl;
+}
+
+export type ClothingItemUpdate = Partial<{
+  title: string | null;
+  category: ClothingCategory;
+  color: string | null;
+  season: Season | null;
+  brand: string | null;
+}>;
+
+export async function updateClothingItem(id: string, updates: ClothingItemUpdate) {
+  const { error } = await supabase.from('clothing_items').update(updates).eq('id', id);
+  if (error) throw error;
+}
+
+/**
+ * Deletes the item row, then best-effort deletes its photo. RLS/foreign keys
+ * cascade this out of any outfit_items/wear_log rows automatically (see
+ * supabase/schema.sql), so a saved outfit that included this item just ends
+ * up with fewer items -- it isn't deleted itself.
+ */
+export async function deleteClothingItem(id: string, imagePath: string) {
+  const { error } = await supabase.from('clothing_items').delete().eq('id', id);
+  if (error) throw error;
+  await deleteClothingImage(imagePath);
+}
+
 /**
  * Adds a temporary signed URL to each item so its (private) photo can be
  * displayed. Signed URLs expire, so don't cache the result across screens.
