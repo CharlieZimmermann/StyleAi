@@ -17,7 +17,13 @@ import {
   listWishlistSuggestions,
   setSuggestionStatus,
 } from '@/lib/wishlist';
-import { CATEGORY_LABELS, CLOTHING_CATEGORIES, type ClothingCategory, type ClothingItem } from '@/types/clothing';
+import {
+  CATEGORY_LABELS,
+  CLOTHING_CATEGORIES,
+  clothingItemLabel,
+  type ClothingCategory,
+  type ClothingItem,
+} from '@/types/clothing';
 import type { Outfit } from '@/types/outfit';
 import type { WishlistSuggestion } from '@/types/wishlist';
 
@@ -208,32 +214,35 @@ export default function ClosetScreen() {
                 contentContainerStyle={[styles.grid, { paddingBottom: BottomTabInset + Spacing.four }]}
                 columnWrapperStyle={{ gap: gridGap }}
                 ItemSeparatorComponent={() => <ThemedView style={{ height: gridGap }} />}
-                renderItem={({ item }) => (
-                  <ThemedView type="backgroundElement" style={[styles.card, { width: cardWidth }]}>
-                    {item.signedUrl ? (
-                      <Image
-                        source={{ uri: item.signedUrl }}
-                        style={[
-                          styles.cardImage,
-                          { width: cardWidth, backgroundColor: theme.backgroundSelected },
-                        ]}
-                        contentFit="cover"
-                      />
-                    ) : (
-                      <ThemedView type="backgroundSelected" style={[styles.cardImage, { width: cardWidth }]} />
-                    )}
-                    <ThemedView style={styles.cardLabel}>
-                      <ThemedText type="smallBold" numberOfLines={1}>
-                        {CATEGORY_LABELS[item.category]}
-                      </ThemedText>
-                      {item.color && (
-                        <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
-                          {item.color}
-                        </ThemedText>
+                renderItem={({ item }) => {
+                  const label = clothingItemLabel(item);
+                  return (
+                    <ThemedView type="backgroundElement" style={[styles.card, { width: cardWidth }]}>
+                      {item.signedUrl ? (
+                        <Image
+                          source={{ uri: item.signedUrl }}
+                          style={[
+                            styles.cardImage,
+                            { width: cardWidth, backgroundColor: theme.backgroundSelected },
+                          ]}
+                          contentFit="cover"
+                        />
+                      ) : (
+                        <ThemedView type="backgroundSelected" style={[styles.cardImage, { width: cardWidth }]} />
                       )}
+                      <ThemedView style={styles.cardLabel}>
+                        <ThemedText type="smallBold" numberOfLines={1}>
+                          {label.title}
+                        </ThemedText>
+                        {label.subtitle && (
+                          <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+                            {label.subtitle}
+                          </ThemedText>
+                        )}
+                      </ThemedView>
                     </ThemedView>
-                  </ThemedView>
-                )}
+                  );
+                }}
               />
             )}
           </>

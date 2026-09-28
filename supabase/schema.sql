@@ -63,6 +63,7 @@ create table public.users (
 create table public.clothing_items (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.users(id) on delete cascade,
+  title text,                    -- e.g. "Green Day Tour T-Shirt"; null falls back to category
   category clothing_category not null,
   color text,
   brand text,
@@ -247,6 +248,10 @@ create policy "delete own images" on storage.objects
 -- Step 4: the AI's short explanation of why it picked an outfit, shown on
 -- the Today screen.
 alter table public.outfits add column if not exists ai_reason text;
+
+-- Richer item identification: a specific title (e.g. a recognized band tour
+-- tee or team logo) instead of just category + color.
+alter table public.clothing_items add column if not exists title text;
 
 
 -- =====================================================================

@@ -10,7 +10,7 @@ import { useAuth } from '@/context/auth-context';
 import { useTheme } from '@/hooks/use-theme';
 import { errorMessage } from '@/lib/errors';
 import { logWorn, setOutfitSaved } from '@/lib/outfits';
-import { CATEGORY_LABELS } from '@/types/clothing';
+import { clothingItemLabel } from '@/types/clothing';
 import type { Outfit } from '@/types/outfit';
 
 type Props = {
@@ -75,29 +75,32 @@ export function OutfitCard({ outfit, onChange, showWeather = false }: Props) {
       )}
 
       <ThemedView style={styles.grid}>
-        {outfit.items.map((item) => (
-          <ThemedView key={item.id} type="backgroundElement" style={styles.itemCard}>
-            {item.signedUrl ? (
-              <Image
-                source={{ uri: item.signedUrl }}
-                style={[styles.itemImage, { backgroundColor: theme.backgroundSelected }]}
-                contentFit="cover"
-              />
-            ) : (
-              <ThemedView type="backgroundSelected" style={styles.itemImage} />
-            )}
-            <ThemedView style={styles.itemLabel}>
-              <ThemedText type="smallBold" numberOfLines={1}>
-                {CATEGORY_LABELS[item.category]}
-              </ThemedText>
-              {item.color && (
-                <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
-                  {item.color}
-                </ThemedText>
+        {outfit.items.map((item) => {
+          const label = clothingItemLabel(item);
+          return (
+            <ThemedView key={item.id} type="backgroundElement" style={styles.itemCard}>
+              {item.signedUrl ? (
+                <Image
+                  source={{ uri: item.signedUrl }}
+                  style={[styles.itemImage, { backgroundColor: theme.backgroundSelected }]}
+                  contentFit="cover"
+                />
+              ) : (
+                <ThemedView type="backgroundSelected" style={styles.itemImage} />
               )}
+              <ThemedView style={styles.itemLabel}>
+                <ThemedText type="smallBold" numberOfLines={1}>
+                  {label.title}
+                </ThemedText>
+                {label.subtitle && (
+                  <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+                    {label.subtitle}
+                  </ThemedText>
+                )}
+              </ThemedView>
             </ThemedView>
-          </ThemedView>
-        ))}
+          );
+        })}
       </ThemedView>
 
       {outfit.reason && (

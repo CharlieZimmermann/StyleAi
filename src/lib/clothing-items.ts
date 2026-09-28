@@ -33,6 +33,7 @@ export async function deleteClothingImage(path: string) {
 
 type NewClothingItem = {
   imagePath: string;
+  title?: string | null;
   category: ClothingCategory;
   color?: string | null;
   season?: Season | null;
@@ -44,6 +45,7 @@ type NewClothingItem = {
 export async function createClothingItem(userId: string, item: NewClothingItem) {
   const { error } = await supabase.from('clothing_items').insert({
     user_id: userId,
+    title: item.title ?? null,
     category: item.category,
     color: item.color ?? null,
     season: item.season ?? null,

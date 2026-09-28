@@ -21,12 +21,15 @@ import {
   SEASON_LABELS,
   type ClothingCategory,
   type Season,
+  type SuggestedTags,
 } from '@/types/clothing';
 
 // Resize/compress before both AI tagging and upload, so we send one small,
-// consistent image everywhere instead of a multi-MB camera photo.
-const RESIZE_WIDTH = 1024;
-const JPEG_QUALITY = 0.7;
+// consistent image everywhere instead of a multi-MB camera photo. Sized a
+// bit larger and less compressed than a minimal thumbnail so small text or
+// graphics (e.g. a band tour tee) stay legible to the AI tagger.
+const RESIZE_WIDTH = 1280;
+const JPEG_QUALITY = 0.85;
 
 type Picked = { uri: string; base64: string };
 
@@ -39,20 +42,22 @@ export default function AddItemScreen() {
   const [tagError, setTagError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
+  const [title, setTitle] = useState('');
   const [category, setCategory] = useState<ClothingCategory | null>(null);
   const [color, setColor] = useState('');
   const [season, setSeason] = useState<Season | null>(null);
   const [brand, setBrand] = useState('');
-  const [aiDescription, setAiDescription] = useState<string | null>(null);
+  const [aiTags, setAiTags] = useState<SuggestedTags | null>(null);
 
   function resetForm() {
     setPhoto(null);
     setTagError(null);
+    setTitle('');
     setCategory(null);
     setColor('');
     setSeason(null);
     setBrand('');
-    setAiDescription(null);
+    setAiTags(null);
   }
 
   async function processPickedImage(uri: string) {
@@ -69,10 +74,11 @@ export default function AddItemScreen() {
     setTagging(true);
     try {
       const tags = await requestClothingTags(result.base64);
+      setTitle(tags.title);
       setCategory(tags.category);
       setColor(tags.color);
       setSeason(tags.season);
-      setAiDescription(tags.description);
+      setAiTags(tags);
     } catch (err) {
       // AI tagging is a convenience, not a requirement -- let the user
       // keep going and fill the form in by hand.
@@ -110,11 +116,12 @@ export default function AddItemScreen() {
       uploadedPath = await uploadClothingImage(session.user.id, photo.base64);
       await createClothingItem(session.user.id, {
         imagePath: uploadedPath,
+        title: title.trim() || null,
         category,
         color: color.trim() || null,
         season,
         brand: brand.trim() || null,
-        aiTags: aiDescription ? { description: aiDescription } : null,
+        aiTags: aiTags,
       });
       resetForm();
       router.navigate('/closet'); // back to the Closet tab
@@ -174,6 +181,15 @@ export default function AddItemScreen() {
                   {tagError} You can still fill this in yourself below.
                 </ThemedText>
               )}
+
+              <ThemedText type="smallBold">Title</ThemedText>
+              <TextInput
+                style={[styles.input, { backgroundColor: theme.backgroundElement, color: theme.text }]}
+                placeholder="e.g. Green Day Tour T-Shirt"
+                placeholderTextColor={theme.textSecondary}
+                value={title}
+                onChangeText={setTitle}
+              />
 
               <ThemedText type="smallBold">Category</ThemedText>
               <ThemedView style={styles.chipWrap}>

@@ -24,11 +24,20 @@ import { generateJson } from '../_shared/gemini.ts';
 const MAX_BASE64_LENGTH = 8_000_000; // ~6MB of actual image data
 
 const PROMPT = `You are tagging a photo of a single clothing item for a wardrobe app.
-Look at the image and identify:
+Look closely at the image, including any text, logos, graphics, team names,
+band/artist names, or brand marks printed on it, and identify:
+- title: a short, specific title for this item. If you recognize a band/tour,
+  sports team, brand logo, slogan, or other distinctive graphic or text,
+  name it specifically (e.g. "Green Day Tour T-Shirt", "Lakers Jersey",
+  "Nike Swoosh Hoodie"). If it's plain with nothing identifiable, use a
+  plain descriptive title instead (e.g. "Navy Crewneck T-Shirt"). Don't
+  guess at a specific name if you can't actually make it out -- a plain
+  description is better than a wrong guess.
 - category: the single best-fitting category for this item
 - color: the main color, as a short common name (e.g. "navy blue", "white", "olive green")
 - season: the best-fitting season for wearing this item
-- description: one short, plain sentence describing the item
+- description: one short, plain sentence describing the item, mentioning
+  any notable graphic or text you saw
 
 Respond with only the requested fields. If the photo doesn't clearly show a
 single wearable clothing item, still make your best guess.`;
@@ -36,16 +45,18 @@ single wearable clothing item, still make your best guess.`;
 const RESPONSE_SCHEMA = {
   type: 'object',
   properties: {
+    title: { type: 'string' },
     category: { type: 'string', enum: [...CLOTHING_CATEGORIES] },
     color: { type: 'string' },
     season: { type: 'string', enum: [...SEASONS] },
     description: { type: 'string' },
   },
-  required: ['category', 'color', 'season', 'description'],
-  propertyOrdering: ['category', 'color', 'season', 'description'],
+  required: ['title', 'category', 'color', 'season', 'description'],
+  propertyOrdering: ['title', 'category', 'color', 'season', 'description'],
 };
 
 type SuggestedTags = {
+  title: string;
   category: (typeof CLOTHING_CATEGORIES)[number];
   color: string;
   season: (typeof SEASONS)[number];
@@ -102,6 +113,8 @@ Deno.serve(async (req) => {
       const tags = data as Partial<SuggestedTags> | null;
       if (
         !tags ||
+        typeof tags.title !== 'string' ||
+        !tags.title.trim() ||
         !CLOTHING_CATEGORIES.includes(tags.category as SuggestedTags['category']) ||
         !SEASONS.includes(tags.season as SuggestedTags['season']) ||
         typeof tags.color !== 'string' ||

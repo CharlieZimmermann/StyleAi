@@ -49,6 +49,8 @@ export const SEASON_LABELS: Record<Season, string> = {
 export type ClothingItem = {
   id: string;
   user_id: string;
+  /** A specific title (e.g. "Green Day Tour T-Shirt"); null falls back to the category label. */
+  title: string | null;
   category: ClothingCategory;
   color: string | null;
   brand: string | null;
@@ -59,8 +61,22 @@ export type ClothingItem = {
   created_at: string;
 };
 
+/** The primary/secondary label to show for an item: its title if it has one
+ * (falling back to the category), plus a subtitle of whatever's left over. */
+export function clothingItemLabel(
+  item: Pick<ClothingItem, 'title' | 'category' | 'color'>,
+): { title: string; subtitle: string | null } {
+  const title = item.title || CATEGORY_LABELS[item.category];
+  const subtitle =
+    [item.title ? CATEGORY_LABELS[item.category] : null, item.color].filter(Boolean).join(' · ') ||
+    null;
+  return { title, subtitle };
+}
+
 /** What the tag-clothing-item Edge Function returns for one photo. */
 export type SuggestedTags = {
+  /** A specific title if the AI recognized a graphic/logo/text, else a plain descriptive one. */
+  title: string;
   category: ClothingCategory;
   color: string;
   season: Season;

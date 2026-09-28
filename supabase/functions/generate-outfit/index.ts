@@ -19,6 +19,7 @@ const MAX_EVENT_PROMPT_LENGTH = 200;
 
 type ClosetItem = {
   id: string;
+  title: string | null;
   category: string;
   color: string | null;
   brand: string | null;
@@ -145,7 +146,7 @@ Rules:
 - Optionally add at most one outerwear, one hat, and up to two accessories, only if they suit the weather and occasion.
 - Dress for the weather: add warm layers or outerwear when it feels cold, go light (shorts, tees) when it's hot, and account for rain or wind.
 - Prefer items that haven't been worn recently (null is best). Avoid anything worn in the last 3 days unless the closet has no good alternative.
-- Choose colors and styles that work well together.${
+- Choose colors and styles that work well together. Some items have a "title" naming a specific graphic, band, team, or logo (e.g. "Green Day Tour T-Shirt") -- treat those as more casual/expressive and avoid them for formal or professional occasions unless nothing more neutral is available.${
     input.avoidItemIds.length
       ? `\n- The user rejected a previous outfit made of these item ids: ${JSON.stringify(input.avoidItemIds)}. Give them a noticeably different outfit: change at least the top (or dress) and one other piece.`
       : ''
@@ -230,7 +231,7 @@ Deno.serve(async (req) => {
   // ---- The user's closet and recent wear history (RLS-scoped to them). ----
   const { data: closetRows, error: closetError } = await supabase
     .from('clothing_items')
-    .select('id, category, color, brand, season');
+    .select('id, title, category, color, brand, season');
   if (closetError) {
     console.error('Closet query failed:', closetError);
     return jsonResponse({ error: "Couldn't load your closet." }, 500);
