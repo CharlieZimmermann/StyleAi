@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Linking, Pressable, StyleSheet, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { OutfitCard } from '@/components/outfit-card';
@@ -12,11 +12,17 @@ import { useTheme } from '@/hooks/use-theme';
 import { listClothingItems } from '@/lib/clothing-items';
 import { errorMessage } from '@/lib/errors';
 import { listSavedOutfits } from '@/lib/outfits';
+import {
+  generateWishlistSuggestions,
+  listWishlistSuggestions,
+  setSuggestionStatus,
+} from '@/lib/wishlist';
 import { CATEGORY_LABELS, CLOTHING_CATEGORIES, type ClothingCategory, type ClothingItem } from '@/types/clothing';
 import type { Outfit } from '@/types/outfit';
+import type { WishlistSuggestion } from '@/types/wishlist';
 
 type ClosetItem = ClothingItem & { signedUrl: string | null };
-type Segment = 'items' | 'saved';
+type Segment = 'items' | 'saved' | 'wishlist';
 
 const FILTERS: (ClothingCategory | 'all')[] = ['all', ...CLOTHING_CATEGORIES];
 
@@ -37,6 +43,11 @@ export default function ClosetScreen() {
   const [savedOutfits, setSavedOutfits] = useState<Outfit[]>([]);
   const [savedLoading, setSavedLoading] = useState(true);
   const [savedError, setSavedError] = useState<string | null>(null);
+
+  const [suggestions, setSuggestions] = useState<WishlistSuggestion[]>([]);
+  const [wishlistLoading, setWishlistLoading] = useState(true);
+  const [wishlistError, setWishlistError] = useState<string | null>(null);
+  const [findingGaps, setFindingGaps] = useState(false);
 
   const loadItems = useCallback(async () => {
     setItemsError(null);
@@ -60,13 +71,25 @@ export default function ClosetScreen() {
     }
   }, []);
 
+  const loadWishlist = useCallback(async () => {
+    setWishlistError(null);
+    try {
+      setSuggestions(await listWishlistSuggestions());
+    } catch (err) {
+      setWishlistError(errorMessage(err, 'Could not load suggestions.'));
+    } finally {
+      setWishlistLoading(false);
+    }
+  }, []);
+
   // Re-fetch every time this tab regains focus (e.g. after adding an item or
   // starring an outfit elsewhere), not just on first mount.
   useFocusEffect(
     useCallback(() => {
       void loadItems();
       void loadSaved();
-    }, [loadItems, loadSaved]),
+      void loadWishlist();
+    }, [loadItems, loadSaved, loadWishlist]),
   );
 
   function handleSavedOutfitChange(next: Outfit) {
@@ -75,6 +98,30 @@ export default function ClosetScreen() {
     } else {
       // Unstarred from here -- it no longer belongs in this list.
       setSavedOutfits((prev) => prev.filter((outfit) => outfit.id !== next.id));
+    }
+  }
+
+  async function handleFindGaps() {
+    setFindingGaps(true);
+    setWishlistError(null);
+    try {
+      await generateWishlistSuggestions();
+      await loadWishlist();
+    } catch (err) {
+      setWishlistError(errorMessage(err, "Couldn't find gaps right now."));
+    } finally {
+      setFindingGaps(false);
+    }
+  }
+
+  async function handleSuggestionStatus(id: string, status: 'dismissed' | 'purchased') {
+    // Optimistic: both statuses remove it from this (suggested-only) list.
+    setSuggestions((prev) => prev.filter((item) => item.id !== id));
+    try {
+      await setSuggestionStatus(id, status);
+    } catch (err) {
+      Alert.alert('Could not update', errorMessage(err));
+      void loadWishlist(); // out of sync with the server -- refetch to recover
     }
   }
 
@@ -92,15 +139,16 @@ export default function ClosetScreen() {
         </ThemedText>
 
         <ThemedView style={styles.segmentRow}>
-          {(['items', 'saved'] as const).map((value) => {
+          {(['items', 'saved', 'wishlist'] as const).map((value) => {
             const active = segment === value;
+            const label = value === 'items' ? 'Items' : value === 'saved' ? 'Saved Outfits' : 'Wishlist';
             return (
               <Pressable key={value} style={styles.segmentButton} onPress={() => setSegment(value)}>
                 <ThemedView
                   type={active ? 'backgroundSelected' : 'backgroundElement'}
                   style={styles.segmentInner}>
                   <ThemedText type="small" themeColor={active ? 'text' : 'textSecondary'}>
-                    {value === 'items' ? 'Items' : 'Saved Outfits'}
+                    {label}
                   </ThemedText>
                 </ThemedView>
               </Pressable>
@@ -189,32 +237,104 @@ export default function ClosetScreen() {
               />
             )}
           </>
-        ) : savedLoading ? (
-          <ThemedView style={styles.centered}>
-            <ActivityIndicator />
-          </ThemedView>
-        ) : savedError ? (
-          <ThemedView style={styles.centered}>
-            <ThemedText type="small" style={styles.errorText}>
-              {savedError}
-            </ThemedText>
-          </ThemedView>
-        ) : savedOutfits.length === 0 ? (
-          <ThemedView style={styles.centered}>
-            <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
-              No saved outfits yet -- tap the star on an outfit in the Today tab to keep it here.
-            </ThemedText>
-          </ThemedView>
+        ) : segment === 'saved' ? (
+          savedLoading ? (
+            <ThemedView style={styles.centered}>
+              <ActivityIndicator />
+            </ThemedView>
+          ) : savedError ? (
+            <ThemedView style={styles.centered}>
+              <ThemedText type="small" style={styles.errorText}>
+                {savedError}
+              </ThemedText>
+            </ThemedView>
+          ) : savedOutfits.length === 0 ? (
+            <ThemedView style={styles.centered}>
+              <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
+                No saved outfits yet -- tap the star on an outfit in the Today tab to keep it here.
+              </ThemedText>
+            </ThemedView>
+          ) : (
+            <FlatList
+              data={savedOutfits}
+              keyExtractor={(outfit) => outfit.id}
+              contentContainerStyle={[styles.savedList, { paddingBottom: BottomTabInset + Spacing.four }]}
+              ItemSeparatorComponent={() => <ThemedView style={styles.savedSeparator} />}
+              renderItem={({ item }) => (
+                <OutfitCard outfit={item} onChange={handleSavedOutfitChange} showWeather />
+              )}
+            />
+          )
         ) : (
-          <FlatList
-            data={savedOutfits}
-            keyExtractor={(outfit) => outfit.id}
-            contentContainerStyle={[styles.savedList, { paddingBottom: BottomTabInset + Spacing.four }]}
-            ItemSeparatorComponent={() => <ThemedView style={styles.savedSeparator} />}
-            renderItem={({ item }) => (
-              <OutfitCard outfit={item} onChange={handleSavedOutfitChange} showWeather />
+          <>
+            <ThemedView style={styles.wishlistIntro}>
+              <ThemedText type="small" themeColor="textSecondary" style={styles.wishlistIntroText}>
+                Staples missing from your closet, based on what you own and your preferences (set in
+                the Account tab).
+              </ThemedText>
+              <Pressable
+                style={[styles.primaryButton, findingGaps && styles.buttonDisabled]}
+                onPress={handleFindGaps}
+                disabled={findingGaps}>
+                {findingGaps ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <ThemedText style={styles.primaryButtonText}>Find gaps</ThemedText>
+                )}
+              </Pressable>
+            </ThemedView>
+
+            {wishlistError && (
+              <ThemedText type="small" style={styles.errorText}>
+                {wishlistError}
+              </ThemedText>
             )}
-          />
+
+            {wishlistLoading ? (
+              <ThemedView style={styles.centered}>
+                <ActivityIndicator />
+              </ThemedView>
+            ) : suggestions.length === 0 && !wishlistError ? (
+              <ThemedView style={styles.centered}>
+                <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
+                  No suggestions yet -- tap &quot;Find gaps&quot; above.
+                </ThemedText>
+              </ThemedView>
+            ) : (
+              <FlatList
+                data={suggestions}
+                keyExtractor={(item) => item.id}
+                contentContainerStyle={[styles.savedList, { paddingBottom: BottomTabInset + Spacing.four }]}
+                ItemSeparatorComponent={() => <ThemedView style={styles.savedSeparator} />}
+                renderItem={({ item }) => (
+                  <ThemedView type="backgroundElement" style={styles.suggestionCard}>
+                    <ThemedText type="smallBold">{item.productName}</ThemedText>
+                    {item.brand && (
+                      <ThemedText type="small" themeColor="textSecondary">
+                        {item.brand}
+                      </ThemedText>
+                    )}
+                    {item.reason && <ThemedText type="small">{item.reason}</ThemedText>}
+                    <ThemedView style={styles.suggestionActions}>
+                      {item.productUrl && (
+                        <Pressable onPress={() => Linking.openURL(item.productUrl!)}>
+                          <ThemedText type="linkPrimary">Shop options</ThemedText>
+                        </Pressable>
+                      )}
+                      <Pressable onPress={() => handleSuggestionStatus(item.id, 'purchased')}>
+                        <ThemedText type="linkPrimary">Bought it</ThemedText>
+                      </Pressable>
+                      <Pressable onPress={() => handleSuggestionStatus(item.id, 'dismissed')}>
+                        <ThemedText type="small" themeColor="textSecondary">
+                          Dismiss
+                        </ThemedText>
+                      </Pressable>
+                    </ThemedView>
+                  </ThemedView>
+                )}
+              />
+            )}
+          </>
         )}
       </SafeAreaView>
     </ThemedView>
@@ -279,6 +399,38 @@ const styles = StyleSheet.create({
   },
   savedSeparator: {
     height: Spacing.four,
+  },
+  wishlistIntro: {
+    paddingHorizontal: Spacing.four,
+    paddingBottom: Spacing.three,
+    gap: Spacing.three,
+  },
+  wishlistIntroText: {
+    lineHeight: 20,
+  },
+  primaryButton: {
+    backgroundColor: '#208AEF',
+    borderRadius: Spacing.two,
+    paddingVertical: Spacing.three,
+    alignItems: 'center',
+  },
+  primaryButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  suggestionCard: {
+    gap: Spacing.two,
+    padding: Spacing.three,
+    borderRadius: Spacing.three,
+  },
+  suggestionActions: {
+    flexDirection: 'row',
+    gap: Spacing.four,
+    marginTop: Spacing.one,
+  },
+  buttonDisabled: {
+    opacity: 0.5,
   },
   centered: {
     flex: 1,

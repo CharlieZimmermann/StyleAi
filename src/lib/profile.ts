@@ -29,3 +29,47 @@ export async function setHomeCity(userId: string, city: string) {
   const { error } = await supabase.from('users').update({ home_city: city }).eq('id', userId);
   if (error) throw error;
 }
+
+export type Preferences = {
+  budgetMin: number | null;
+  budgetMax: number | null;
+  preferredBrands: string[];
+  styleTags: string[];
+};
+
+/** Feeds the gap-finder (suggest-wardrobe-gaps); none of this is required to use the app. */
+export async function getPreferences(userId: string): Promise<Preferences> {
+  const { data, error } = await supabase
+    .from('users')
+    .select('budget_min, budget_max, preferred_brands, style_tags')
+    .eq('id', userId)
+    .maybeSingle();
+  if (error) throw error;
+  return {
+    budgetMin: data?.budget_min ?? null,
+    budgetMax: data?.budget_max ?? null,
+    preferredBrands: data?.preferred_brands ?? [],
+    styleTags: data?.style_tags ?? [],
+  };
+}
+
+export async function setPreferences(userId: string, prefs: Preferences) {
+  const { error } = await supabase
+    .from('users')
+    .update({
+      budget_min: prefs.budgetMin,
+      budget_max: prefs.budgetMax,
+      preferred_brands: prefs.preferredBrands,
+      style_tags: prefs.styleTags,
+    })
+    .eq('id', userId);
+  if (error) throw error;
+}
+
+/** Turns "Uniqlo, J.Crew,  " into ["Uniqlo", "J.Crew"] -- for the comma-separated text inputs. */
+export function parseTagList(text: string): string[] {
+  return text
+    .split(',')
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+}
