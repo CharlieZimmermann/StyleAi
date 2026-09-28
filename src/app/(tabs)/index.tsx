@@ -1,29 +1,20 @@
-import { Image } from 'expo-image';
 import * as Location from 'expo-location';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  TextInput,
-  useWindowDimensions,
-} from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ExternalLink } from '@/components/external-link';
+import { OutfitCard } from '@/components/outfit-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, Spacing } from '@/constants/theme';
 import { useAuth } from '@/context/auth-context';
 import { useTheme } from '@/hooks/use-theme';
 import { errorMessage } from '@/lib/errors';
-import { generateOutfit, getTodaysOutfit, logWorn } from '@/lib/outfits';
+import { generateOutfit, getTodaysOutfit, listEventOutfits } from '@/lib/outfits';
 import { getHomeCity, setHomeCity } from '@/lib/profile';
-import { CATEGORY_LABELS } from '@/types/clothing';
-import type { Outfit, WeatherLocation, WeatherSnapshot } from '@/types/outfit';
+import type { Outfit, WeatherLocation } from '@/types/outfit';
 
 type Status = 'loading' | 'generating' | 'ready' | 'needs-city' | 'error';
 
@@ -50,7 +41,6 @@ async function resolveLocation(userId: string): Promise<WeatherLocation | null> 
 
 export default function TodayScreen() {
   const theme = useTheme();
-  const { width } = useWindowDimensions();
   const { session } = useAuth();
   const userId = session?.user.id;
 
@@ -58,7 +48,11 @@ export default function TodayScreen() {
   const [status, setStatus] = useState<Status>('loading');
   const [error, setError] = useState<string | null>(null);
   const [cityInput, setCityInput] = useState('');
-  const [wearing, setWearing] = useState(false);
+
+  const [eventPromptInput, setEventPromptInput] = useState('');
+  const [eventGenerating, setEventGenerating] = useState(false);
+  const [eventError, setEventError] = useState<string | null>(null);
+  const [eventOutfits, setEventOutfits] = useState<Outfit[]>([]);
 
   // Refs, not state, so the callbacks below stay stable. A callback whose
   // identity changed every time `outfit` changed would make useFocusEffect
@@ -122,10 +116,19 @@ export default function TodayScreen() {
     }
   }, [userId, applyOutfit, generate]);
 
+  const loadEventOutfits = useCallback(async () => {
+    try {
+      setEventOutfits(await listEventOutfits(5));
+    } catch (err) {
+      console.error('Failed to load event outfits:', err);
+    }
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
       void load();
-    }, [load]),
+      void loadEventOutfits();
+    }, [load, loadEventOutfits]),
   );
 
   // Buttons go through here so a double-tap can't start two generations.
@@ -151,23 +154,31 @@ export default function TodayScreen() {
     await runGenerate({ city });
   }
 
-  async function handleWear() {
-    if (!userId || !outfit) return;
-    setWearing(true);
+  async function handleGenerateEvent() {
+    const eventPrompt = eventPromptInput.trim();
+    if (!eventPrompt || !userId || eventGenerating) return;
+    setEventGenerating(true);
+    setEventError(null);
     try {
-      await logWorn(
-        userId,
-        outfit.items.map((item) => item.id),
-      );
-      applyOutfit({ ...outfit, wornToday: true });
+      const location = await resolveLocation(userId);
+      if (!location) {
+        setEventError('Set your location above first (see "Where are you?").');
+        return;
+      }
+      await generateOutfit({ location, eventPrompt });
+      setEventPromptInput('');
+      await loadEventOutfits();
     } catch (err) {
-      Alert.alert('Could not log outfit', errorMessage(err));
+      setEventError(errorMessage(err, "Couldn't put that outfit together."));
     } finally {
-      setWearing(false);
+      setEventGenerating(false);
     }
   }
 
-  const cardWidth = (width - Spacing.four * 2 - Spacing.three) / 2;
+  function handleEventOutfitChange(next: Outfit) {
+    setEventOutfits((prev) => prev.map((item) => (item.id === next.id ? next : item)));
+  }
+
   const dateLabel = new Date().toLocaleDateString(undefined, {
     weekday: 'long',
     month: 'long',
@@ -238,55 +249,7 @@ export default function TodayScreen() {
 
           {status === 'ready' && outfit && (
             <>
-              {outfit.weather && <WeatherCard weather={outfit.weather} />}
-
-              <ThemedView style={styles.grid}>
-                {outfit.items.map((item) => (
-                  <ThemedView
-                    key={item.id}
-                    type="backgroundElement"
-                    style={[styles.itemCard, { width: cardWidth }]}>
-                    {item.signedUrl ? (
-                      <Image
-                        source={{ uri: item.signedUrl }}
-                        style={[styles.itemImage, { backgroundColor: theme.backgroundSelected }]}
-                        contentFit="cover"
-                      />
-                    ) : (
-                      <ThemedView type="backgroundSelected" style={styles.itemImage} />
-                    )}
-                    <ThemedView style={styles.itemLabel}>
-                      <ThemedText type="smallBold" numberOfLines={1}>
-                        {CATEGORY_LABELS[item.category]}
-                      </ThemedText>
-                      {item.color && (
-                        <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
-                          {item.color}
-                        </ThemedText>
-                      )}
-                    </ThemedView>
-                  </ThemedView>
-                ))}
-              </ThemedView>
-
-              {outfit.reason && (
-                <ThemedView type="backgroundElement" style={styles.card}>
-                  <ThemedText type="small">{outfit.reason}</ThemedText>
-                </ThemedView>
-              )}
-
-              <Pressable
-                style={[styles.primaryButton, (outfit.wornToday || wearing) && styles.buttonDisabled]}
-                onPress={handleWear}
-                disabled={outfit.wornToday || wearing}>
-                {wearing ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <ThemedText style={styles.primaryButtonText}>
-                    {outfit.wornToday ? 'Worn today ✓' : 'Wear this'}
-                  </ThemedText>
-                )}
-              </Pressable>
+              <OutfitCard outfit={outfit} onChange={applyOutfit} showWeather />
 
               <Pressable onPress={() => runGenerate({ regenerate: true })}>
                 <ThemedText type="linkPrimary" style={styles.centerText}>
@@ -296,6 +259,43 @@ export default function TodayScreen() {
             </>
           )}
 
+          <ThemedView style={styles.divider} />
+
+          <ThemedText type="smallBold">Outfit for an occasion</ThemedText>
+          <ThemedView style={styles.eventRow}>
+            <TextInput
+              style={[styles.input, styles.eventInput, { backgroundColor: theme.backgroundElement, color: theme.text }]}
+              placeholder="e.g. job interview, golf outing"
+              placeholderTextColor={theme.textSecondary}
+              value={eventPromptInput}
+              onChangeText={setEventPromptInput}
+              returnKeyType="done"
+              onSubmitEditing={handleGenerateEvent}
+            />
+            <Pressable
+              style={[
+                styles.eventButton,
+                (!eventPromptInput.trim() || eventGenerating) && styles.buttonDisabled,
+              ]}
+              onPress={handleGenerateEvent}
+              disabled={!eventPromptInput.trim() || eventGenerating}>
+              {eventGenerating ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <ThemedText style={styles.primaryButtonText}>Get outfit</ThemedText>
+              )}
+            </Pressable>
+          </ThemedView>
+          {eventError && (
+            <ThemedText type="small" style={styles.errorText}>
+              {eventError}
+            </ThemedText>
+          )}
+
+          {eventOutfits.map((eventOutfit) => (
+            <OutfitCard key={eventOutfit.id} outfit={eventOutfit} onChange={handleEventOutfitChange} />
+          ))}
+
           <ExternalLink href="https://open-meteo.com/">
             <ThemedText type="small" themeColor="textSecondary" style={styles.centerText}>
               Weather data by Open-Meteo.com
@@ -303,30 +303,6 @@ export default function TodayScreen() {
           </ExternalLink>
         </ScrollView>
       </SafeAreaView>
-    </ThemedView>
-  );
-}
-
-function WeatherCard({ weather }: { weather: WeatherSnapshot }) {
-  return (
-    <ThemedView type="backgroundElement" style={[styles.card, styles.weatherCard]}>
-      <ThemedView style={styles.weatherMain}>
-        <ThemedText type="title">{weather.temperatureF}°</ThemedText>
-        <ThemedView style={styles.weatherDetails}>
-          <ThemedText type="smallBold">{weather.condition}</ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
-            Feels like {weather.feelsLikeF}° · H {weather.highF}° L {weather.lowF}°
-          </ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
-            {weather.precipitationChance}% precipitation · {weather.windMph} mph wind
-          </ThemedText>
-          {weather.locationName && (
-            <ThemedText type="small" themeColor="textSecondary">
-              {weather.locationName}
-            </ThemedText>
-          )}
-        </ThemedView>
-      </ThemedView>
     </ThemedView>
   );
 }
@@ -360,37 +336,24 @@ const styles = StyleSheet.create({
     padding: Spacing.three,
     gap: Spacing.two,
   },
-  weatherCard: {
-    padding: Spacing.four,
+  divider: {
+    height: 1,
+    backgroundColor: 'rgba(128,128,128,0.2)',
+    marginVertical: Spacing.two,
   },
-  weatherMain: {
+  eventRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.four,
+    gap: Spacing.two,
     backgroundColor: 'transparent',
   },
-  weatherDetails: {
+  eventInput: {
     flex: 1,
-    gap: 2,
-    backgroundColor: 'transparent',
   },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.three,
-  },
-  itemCard: {
-    borderRadius: Spacing.three,
-    overflow: 'hidden',
-  },
-  itemImage: {
-    width: '100%',
-    aspectRatio: 1,
-  },
-  itemLabel: {
-    padding: Spacing.two,
-    gap: 2,
-    backgroundColor: 'transparent',
+  eventButton: {
+    backgroundColor: '#208AEF',
+    borderRadius: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    justifyContent: 'center',
   },
   input: {
     borderRadius: Spacing.two,

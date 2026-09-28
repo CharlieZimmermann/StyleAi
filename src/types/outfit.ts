@@ -26,6 +26,7 @@ export type Outfit = {
   items: OutfitItem[];
   /** True once every item in the outfit has a wear_log entry for today. */
   wornToday: boolean;
+  isSaved: boolean;
 };
 
 /** Where the weather should come from: GPS coordinates, or a saved city name. */

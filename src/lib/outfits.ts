@@ -61,10 +61,11 @@ export async function getTodaysOutfit(): Promise<Outfit | null> {
   return data ? loadOutfit(data.id) : null;
 }
 
-async function loadOutfit(outfitId: string): Promise<Outfit> {
+/** Loads one outfit (by id) fully: its items, signed photo URLs, and today's worn status. */
+export async function loadOutfit(outfitId: string): Promise<Outfit> {
   const { data: row, error } = await supabase
     .from('outfits')
-    .select('id, outfit_type, outfit_date, event_prompt, ai_reason, weather_snapshot')
+    .select('id, outfit_type, outfit_date, event_prompt, ai_reason, weather_snapshot, is_saved')
     .eq('id', outfitId)
     .single();
   if (error) throw error;
@@ -92,7 +93,37 @@ async function loadOutfit(outfitId: string): Promise<Outfit> {
     weather: row.weather_snapshot as WeatherSnapshot | null,
     items,
     wornToday: items.length > 0 && items.every((item) => alreadyWorn.has(item.id)),
+    isSaved: row.is_saved,
   };
+}
+
+/** The most recent event (occasion) outfits, newest first. */
+export async function listEventOutfits(limit = 5): Promise<Outfit[]> {
+  const { data, error } = await supabase
+    .from('outfits')
+    .select('id')
+    .eq('outfit_type', 'event')
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return Promise.all((data ?? []).map((row) => loadOutfit(row.id)));
+}
+
+/** Every outfit (daily or event) the user has starred, newest first. */
+export async function listSavedOutfits(limit = 30): Promise<Outfit[]> {
+  const { data, error } = await supabase
+    .from('outfits')
+    .select('id')
+    .eq('is_saved', true)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return Promise.all((data ?? []).map((row) => loadOutfit(row.id)));
+}
+
+export async function setOutfitSaved(outfitId: string, saved: boolean) {
+  const { error } = await supabase.from('outfits').update({ is_saved: saved }).eq('id', outfitId);
+  if (error) throw error;
 }
 
 /** Which of these items already have a wear_log entry for today. */
