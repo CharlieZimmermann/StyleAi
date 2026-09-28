@@ -15,10 +15,28 @@
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
+import { CLOTHING_CATEGORIES } from '../_shared/clothing-schema.ts';
 import { corsHeaders } from '../_shared/cors.ts';
 import { generateJson } from '../_shared/gemini.ts';
 
-const MAX_SUGGESTIONS = 6;
+const MAX_SUGGESTIONS = 8;
+
+// Plain-language examples for the prompt -- "hat" and "accessory" especially
+// are broad buckets the model won't reliably unpack on its own otherwise.
+const CATEGORY_EXAMPLES: Record<(typeof CLOTHING_CATEGORIES)[number], string> = {
+  t_shirt: 'plain or graphic t-shirts',
+  shirt: 'button-up or casual shirts',
+  sweatshirt: 'sweatshirts',
+  hoodie: 'hoodies',
+  pants: 'casual pants, jeans',
+  formal_pants: 'dress/formal pants',
+  shorts: 'shorts',
+  dress_skirt: 'dresses, skirts',
+  outerwear: 'jackets, coats',
+  shoes: 'shoes (sneakers, boots, dress shoes, sandals)',
+  hat: 'hats (baseball cap, beanie, sun hat)',
+  accessory: 'accessories: sunglasses, jewelry/watches, belts, bags, scarves',
+};
 
 type ClosetItem = { category: string; color: string | null };
 
@@ -137,9 +155,21 @@ Deno.serve(async (req) => {
   }
   const preferredBrands: string[] = profile?.preferred_brands ?? [];
 
+  const ownedCategories = new Set(closet.map((item) => item.category));
+  const emptyCategories = CLOTHING_CATEGORIES.filter((category) => !ownedCategories.has(category));
+
   // ---- Ask Gemini what's missing. ----
   const prompt = `You are a wardrobe stylist. Here is a user's current closet (JSON, one entry per item):
 ${JSON.stringify(closet)}
+
+The full set of wardrobe categories, with examples of what belongs in each:
+${CLOTHING_CATEGORIES.map((category) => `- ${category}: ${CATEGORY_EXAMPLES[category]}`).join('\n')}
+
+${
+    emptyCategories.length
+      ? `The closet has ZERO items in these categories: ${emptyCategories.join(', ')}. Treat these as the highest-priority gaps -- a closet with no hat, no accessories, or no outerwear at all is missing more than one with an odd color. Give at least one suggestion for each category listed here (more than one if the category covers several distinct kinds of item, like accessory), before suggesting refinements within categories the user already owns.`
+      : "Every category has at least one item, so focus on specific, common staples missing within categories they own (e.g. a neutral basic to layer, a versatile color they're missing)."
+  }
 
 ${profile?.style_tags?.length ? `Their style: ${profile.style_tags.join(', ')}.` : ''}
 ${
@@ -149,11 +179,13 @@ ${
   }
 ${preferredBrands.length ? `Brands they like: ${preferredBrands.join(', ')}.` : ''}
 
-List ${MAX_SUGGESTIONS} specific, common wardrobe staples this closet is clearly missing (e.g.
-"plain white crew-neck t-shirt", "black leather belt") -- not duplicates of
-what they already own. For each, give a short reason mentioning what gap it
-fills (e.g. "you have no neutral tops to layer under a hoodie"). Only name a
-brand if one of their preferred brands is a good fit; otherwise leave it out.`;
+List up to ${MAX_SUGGESTIONS} specific, common wardrobe staples this closet is clearly missing
+(e.g. "plain white crew-neck t-shirt", "black leather belt", "aviator
+sunglasses") -- not duplicates of what they already own. For each, give a
+short reason mentioning what gap it fills (e.g. "you have no neutral tops to
+layer under a hoodie", or for an empty category, "you don't have any
+outerwear yet, for cold or rainy days"). Only name a brand if one of their
+preferred brands is a good fit; otherwise leave it out.`;
 
   const result = await generateJson<Suggestion[]>({
     apiKey,
