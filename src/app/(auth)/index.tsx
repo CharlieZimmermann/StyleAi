@@ -59,6 +59,12 @@ export default function LoginScreen() {
 
         {errorMessage && <ThemedText style={styles.error}>{errorMessage}</ThemedText>}
 
+        <Link href="/forgot-password" style={styles.forgotLink}>
+          <ThemedText type="link" themeColor="textSecondary">
+            Forgot password?
+          </ThemedText>
+        </Link>
+
         <Pressable
           style={[styles.button, submitting && styles.buttonDisabled]}
           onPress={handleLogin}
@@ -120,5 +126,8 @@ const styles = StyleSheet.create({
   link: {
     alignSelf: 'center',
     marginTop: Spacing.three,
+  },
+  forgotLink: {
+    alignSelf: 'flex-end',
   },
 });

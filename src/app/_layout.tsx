@@ -60,7 +60,7 @@ const errorStyles = StyleSheet.create({
 });
 
 function RootNavigator() {
-  const { session, loading } = useAuth();
+  const { session, loading, recoveryMode } = useAuth();
 
   // Render nothing while the initial "am I already logged in?" check runs.
   // AnimatedSplashOverlay (rendered alongside this in RootLayout) covers
@@ -69,11 +69,18 @@ function RootNavigator() {
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Protected guard={!session}>
+      {/* Takes priority over the session-based routes below: a recovery
+          link creates a real session, but the user must set a new password
+          before landing in the main app, not skip straight past this. */}
+      <Stack.Protected guard={recoveryMode}>
+        <Stack.Screen name="reset-password" />
+      </Stack.Protected>
+
+      <Stack.Protected guard={!recoveryMode && !session}>
         <Stack.Screen name="(auth)" />
       </Stack.Protected>
 
-      <Stack.Protected guard={!!session}>
+      <Stack.Protected guard={!recoveryMode && !!session}>
         <Stack.Screen name="(tabs)" />
       </Stack.Protected>
     </Stack>
