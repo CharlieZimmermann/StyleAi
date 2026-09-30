@@ -8,9 +8,12 @@ import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useAuth } from '@/context/auth-context';
 import { useTheme } from '@/hooks/use-theme';
+import { changePassword, deleteMyAccount } from '@/lib/account';
 import { errorMessage } from '@/lib/errors';
 import { getPreferences, parseTagList, setPreferences } from '@/lib/profile';
 import { supabase } from '@/lib/supabase';
+
+const MIN_PASSWORD_LENGTH = 6; // Supabase's own default minimum
 
 export default function AccountScreen() {
   const theme = useTheme();
@@ -24,6 +27,12 @@ export default function AccountScreen() {
   const [brands, setBrands] = useState('');
   const [styles_, setStyles] = useState('');
   const [savingPrefs, setSavingPrefs] = useState(false);
+
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [changingPassword, setChangingPassword] = useState(false);
+
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (!userId) return;
@@ -45,6 +54,54 @@ export default function AccountScreen() {
     // Stack.Protected in the root layout swaps back to (auth) -- no
     // manual navigation needed. setSigningOut isn't reset because this
     // screen unmounts once that happens.
+  }
+
+  async function handleChangePassword() {
+    if (newPassword.length < MIN_PASSWORD_LENGTH) {
+      Alert.alert('Password too short', `Use at least ${MIN_PASSWORD_LENGTH} characters.`);
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      Alert.alert("Passwords don't match", 'Check both fields and try again.');
+      return;
+    }
+    setChangingPassword(true);
+    try {
+      await changePassword(newPassword);
+      setNewPassword('');
+      setConfirmPassword('');
+      Alert.alert('Password updated');
+    } catch (err) {
+      Alert.alert('Could not update password', errorMessage(err));
+    } finally {
+      setChangingPassword(false);
+    }
+  }
+
+  function handleDeleteAccount() {
+    Alert.alert(
+      'Delete your account?',
+      'This permanently deletes your account, closet, outfits, and photos. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete Account',
+          style: 'destructive',
+          onPress: async () => {
+            setDeleting(true);
+            try {
+              await deleteMyAccount();
+              await supabase.auth.signOut();
+              // onAuthStateChange clears the (already-deleted) session and
+              // Stack.Protected swaps to (auth) -- same as a normal sign-out.
+            } catch (err) {
+              Alert.alert('Could not delete account', errorMessage(err));
+              setDeleting(false);
+            }
+          },
+        },
+      ],
+    );
   }
 
   async function handleSavePreferences() {
@@ -154,6 +211,58 @@ export default function AccountScreen() {
               </>
             )}
           </ThemedView>
+
+          <ThemedView type="backgroundElement" style={styles.card}>
+            <ThemedText type="smallBold">Change password</ThemedText>
+            <TextInput
+              style={[styles.input, { backgroundColor: theme.background, color: theme.text }]}
+              placeholder={`New password (min ${MIN_PASSWORD_LENGTH} characters)`}
+              placeholderTextColor={theme.textSecondary}
+              secureTextEntry
+              autoComplete="password-new"
+              value={newPassword}
+              onChangeText={setNewPassword}
+            />
+            <TextInput
+              style={[styles.input, { backgroundColor: theme.background, color: theme.text }]}
+              placeholder="Confirm new password"
+              placeholderTextColor={theme.textSecondary}
+              secureTextEntry
+              autoComplete="password-new"
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+            />
+            <Pressable
+              style={[
+                styles.saveButton,
+                (changingPassword || !newPassword || !confirmPassword) && styles.buttonDisabled,
+              ]}
+              onPress={handleChangePassword}
+              disabled={changingPassword || !newPassword || !confirmPassword}>
+              {changingPassword ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <ThemedText style={styles.saveButtonText}>Update password</ThemedText>
+              )}
+            </Pressable>
+          </ThemedView>
+
+          <ThemedView type="backgroundElement" style={styles.card}>
+            <ThemedText type="smallBold">Danger zone</ThemedText>
+            <ThemedText type="small" themeColor="textSecondary">
+              Permanently deletes your account, closet, outfits, and photos. This cannot be undone.
+            </ThemedText>
+            <Pressable
+              style={[styles.deleteButton, deleting && styles.buttonDisabled]}
+              onPress={handleDeleteAccount}
+              disabled={deleting}>
+              {deleting ? (
+                <ActivityIndicator />
+              ) : (
+                <ThemedText style={styles.deleteButtonText}>Delete Account</ThemedText>
+              )}
+            </Pressable>
+          </ThemedView>
         </ScrollView>
       </SafeAreaView>
     </ThemedView>
@@ -222,5 +331,18 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.6,
+  },
+  deleteButton: {
+    borderRadius: Spacing.two,
+    paddingVertical: Spacing.three,
+    alignItems: 'center',
+    marginTop: Spacing.two,
+    borderWidth: 1,
+    borderColor: '#D9342B',
+  },
+  deleteButtonText: {
+    color: '#D9342B',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

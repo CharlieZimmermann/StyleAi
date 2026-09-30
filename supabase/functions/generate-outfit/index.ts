@@ -12,6 +12,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 import { BOTTOM_CATEGORIES, TOP_CATEGORIES } from '../_shared/clothing-schema.ts';
 import { corsHeaders } from '../_shared/cors.ts';
 import { generateJson } from '../_shared/gemini.ts';
+import { getPublishableKey } from '../_shared/env-keys.ts';
 import { checkRateLimit, logAiCall } from '../_shared/rate-limit.ts';
 import { fetchWeather, geocodeCity, type WeatherSnapshot } from '../_shared/weather.ts';
 
@@ -164,10 +165,7 @@ Deno.serve(async (req) => {
   // ---- Auth: act as the calling user, so RLS applies. ----
   const authHeader = req.headers.get('Authorization');
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
-  const supabaseKey =
-    Deno.env.get('SUPABASE_PUBLISHABLE_KEY') ??
-    Deno.env.get('SUPABASE_ANON_KEY') ??
-    req.headers.get('apikey');
+  const supabaseKey = getPublishableKey() ?? req.headers.get('apikey');
   if (!authHeader || !supabaseUrl || !supabaseKey) {
     return jsonResponse({ error: 'Not signed in.' }, 401);
   }
