@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "Closet",
-    "slug": "closet",
+    "name": "StyleAi",
+    "slug": "styleai",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "closet",
+    "scheme": "styleai",
     "userInterfaceStyle": "automatic",
     "android": {
       "adaptiveIcon": {
@@ -33,14 +33,14 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Closet uses your approximate location to check the weather and suggest what to wear."
+          "locationWhenInUsePermission": "StyleAi uses your approximate location to check the weather and suggest what to wear."
         }
       ],
       [
         "expo-image-picker",
         {
-          "photosPermission": "Closet uses your photo library so you can add clothing items from existing photos.",
-          "cameraPermission": "Closet uses your camera so you can photograph clothing items to add to your closet."
+          "photosPermission": "StyleAi uses your photo library so you can add clothing items from existing photos.",
+          "cameraPermission": "StyleAi uses your camera so you can photograph clothing items to add to your closet."
         }
       ]
     ],

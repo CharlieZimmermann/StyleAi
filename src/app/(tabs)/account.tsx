@@ -129,7 +129,7 @@ export default function AccountScreen() {
           <ThemedView style={styles.heroSection}>
             <AnimatedIcon />
             <ThemedText type="title" style={styles.title}>
-              Welcome to&nbsp;Closet
+              Welcome to&nbsp;StyleAi
             </ThemedText>
           </ThemedView>
 

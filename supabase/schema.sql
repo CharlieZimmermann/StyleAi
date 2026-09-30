@@ -1,5 +1,5 @@
 -- =====================================================================
--- Closet app: Supabase schema
+-- StyleAi app: Supabase schema
 --
 -- HOW TO RUN: Supabase dashboard -> SQL Editor -> New query -> paste this
 -- whole file -> Run. Run it ONCE on a fresh project (re-running errors with

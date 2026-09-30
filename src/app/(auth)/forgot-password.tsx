@@ -22,7 +22,7 @@ export default function ForgotPasswordScreen() {
     setError(null);
     setSubmitting(true);
     // createURL adapts to whatever's actually running the app right now --
-    // an exp:// URL in Expo Go, or the app's own closet:// scheme in a real
+    // an exp:// URL in Expo Go, or the app's own styleai:// scheme in a real
     // build -- so this works the same way in both without special-casing.
     const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: Linking.createURL('reset-password'),

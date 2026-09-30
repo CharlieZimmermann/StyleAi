@@ -1,4 +1,4 @@
-# Closet
+# StyleAi
 
 An AI-powered wardrobe app: photograph your clothes, get an AI-tagged digital
 closet, and receive a daily outfit suggestion based on the weather and what

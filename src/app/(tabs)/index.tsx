@@ -224,7 +224,7 @@ export default function TodayScreen() {
 
           {status === 'empty-closet' && (
             <ThemedView type="backgroundElement" style={styles.card}>
-              <ThemedText type="smallBold">Welcome to Closet!</ThemedText>
+              <ThemedText type="smallBold">Welcome to StyleAi!</ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
                 Add a few items -- at least a top, a bottom (or a dress), and shoes -- and
                 you&apos;ll get your first AI-picked outfit for today&apos;s weather.
