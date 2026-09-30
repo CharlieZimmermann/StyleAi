@@ -133,7 +133,7 @@ const styles = StyleSheet.create({
   },
   background: {
     borderRadius: 40,
-    experimental_backgroundImage: `linear-gradient(180deg, #3C9FFE, #0274DF)`,
+    experimental_backgroundImage: `linear-gradient(180deg, #4F7595, #22384B)`,
     width: 128,
     height: 128,
     position: 'absolute',
@@ -143,7 +143,7 @@ const styles = StyleSheet.create({
     // Must match app.json's expo-splash-screen.backgroundColor exactly --
     // this overlay hands off from the native splash screen, and any
     // mismatch (including a dark-mode swap) would show as a visible flash.
-    backgroundColor: '#208AEF',
+    backgroundColor: '#3A5A78',
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 1000,

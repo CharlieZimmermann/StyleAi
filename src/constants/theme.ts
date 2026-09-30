@@ -7,26 +7,30 @@ import '@/global.css';
 
 import { Platform } from 'react-native';
 
+// A quieter, more editorial palette than a default bright "tech blue": warm
+// off-white/off-black instead of stark #fff/#000, and a muted slate-blue
+// accent instead of a saturated primary. Same shape as before so every
+// screen consuming these tokens via useTheme() picks it up automatically.
 export const Colors = {
   light: {
-    text: '#000000',
-    background: '#ffffff',
-    backgroundElement: '#F0F0F3',
-    backgroundSelected: '#E0E1E6',
-    textSecondary: '#60646C',
-    tint: '#208AEF',
+    text: '#1C1C1E',
+    background: '#FAFAF8',
+    backgroundElement: '#F1F0EC',
+    backgroundSelected: '#E5E2DA',
+    textSecondary: '#6E6D68',
+    tint: '#3A5A78',
     tintText: '#ffffff',
-    danger: '#D9342B',
+    danger: '#B3483C',
   },
   dark: {
-    text: '#ffffff',
-    background: '#000000',
-    backgroundElement: '#212225',
-    backgroundSelected: '#2E3135',
-    textSecondary: '#B0B4BA',
-    tint: '#4DA3FF',
+    text: '#F2F1ED',
+    background: '#141414',
+    backgroundElement: '#1F1F1E',
+    backgroundSelected: '#2A2A28',
+    textSecondary: '#9C9A94',
+    tint: '#4F7595',
     tintText: '#ffffff',
-    danger: '#FF6B61',
+    danger: '#D97B6C',
   },
 } as const;
 

@@ -50,7 +50,7 @@ const errorStyles = StyleSheet.create({
   // has already gone wrong, so it deliberately doesn't depend on the theme
   // system (or anything else) being in a working state.
   button: {
-    backgroundColor: '#208AEF',
+    backgroundColor: '#3A5A78',
     borderRadius: Spacing.two,
     paddingHorizontal: Spacing.five,
     paddingVertical: Spacing.three,
