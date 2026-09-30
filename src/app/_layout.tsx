@@ -1,11 +1,63 @@
-import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
+import { DarkTheme, DefaultTheme, Stack, ThemeProvider, type ErrorBoundaryProps } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useColorScheme } from 'react-native';
+import { Pressable, StyleSheet, useColorScheme } from 'react-native';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
+import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
+import { Spacing } from '@/constants/theme';
 import { AuthProvider, useAuth } from '@/context/auth-context';
 
 SplashScreen.preventAutoHideAsync();
+
+/**
+ * Expo Router auto-wraps the whole routed tree in a boundary that renders
+ * this on any uncaught render error, instead of a hard crash. Exported by
+ * name from a layout file -- that's the whole wiring, no manual <Try> needed.
+ * See https://docs.expo.dev/router/error-handling/
+ */
+export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
+  return (
+    <ThemedView style={errorStyles.container}>
+      <ThemedText type="title" style={errorStyles.title}>
+        Something went wrong
+      </ThemedText>
+      <ThemedText type="small" themeColor="textSecondary" style={errorStyles.message}>
+        {error.message || 'An unexpected error occurred.'}
+      </ThemedText>
+      <Pressable style={errorStyles.button} onPress={() => void retry()}>
+        <ThemedText style={errorStyles.buttonText}>Try again</ThemedText>
+      </Pressable>
+    </ThemedView>
+  );
+}
+
+const errorStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.three,
+    paddingHorizontal: Spacing.four,
+  },
+  title: {
+    textAlign: 'center',
+  },
+  message: {
+    textAlign: 'center',
+  },
+  button: {
+    backgroundColor: '#208AEF',
+    borderRadius: Spacing.two,
+    paddingHorizontal: Spacing.five,
+    paddingVertical: Spacing.three,
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+});
 
 function RootNavigator() {
   const { session, loading } = useAuth();
