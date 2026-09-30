@@ -140,6 +140,9 @@ const styles = StyleSheet.create({
   },
   splashOverlay: {
     ...StyleSheet.absoluteFill,
+    // Must match app.json's expo-splash-screen.backgroundColor exactly --
+    // this overlay hands off from the native splash screen, and any
+    // mismatch (including a dark-mode swap) would show as a visible flash.
     backgroundColor: '#208AEF',
     alignItems: 'center',
     justifyContent: 'center',

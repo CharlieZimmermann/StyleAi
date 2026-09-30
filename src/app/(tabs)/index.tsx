@@ -6,9 +6,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ExternalLink } from '@/components/external-link';
 import { OutfitCard } from '@/components/outfit-card';
+import { PrimaryButton } from '@/components/primary-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { BottomTabInset, Spacing } from '@/constants/theme';
+import { BottomTabInset, CardShadow, Spacing } from '@/constants/theme';
 import { useAuth } from '@/context/auth-context';
 import { useTheme } from '@/hooks/use-theme';
 import { hasAnyClothingItems } from '@/lib/clothing-items';
@@ -223,20 +224,18 @@ export default function TodayScreen() {
           )}
 
           {status === 'empty-closet' && (
-            <ThemedView type="backgroundElement" style={styles.card}>
+            <ThemedView type="backgroundElement" style={[styles.card, CardShadow]}>
               <ThemedText type="smallBold">Welcome to StyleAi!</ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
                 Add a few items -- at least a top, a bottom (or a dress), and shoes -- and
                 you&apos;ll get your first AI-picked outfit for today&apos;s weather.
               </ThemedText>
-              <Pressable style={styles.primaryButton} onPress={() => router.push('/add-item')}>
-                <ThemedText style={styles.primaryButtonText}>Add an item</ThemedText>
-              </Pressable>
+              <PrimaryButton label="Add an item" onPress={() => router.push('/add-item')} />
             </ThemedView>
           )}
 
           {status === 'needs-city' && (
-            <ThemedView type="backgroundElement" style={styles.card}>
+            <ThemedView type="backgroundElement" style={[styles.card, CardShadow]}>
               <ThemedText type="smallBold">Where are you?</ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
                 Location access is off, so enter your city to get the weather for your outfit.
@@ -251,23 +250,20 @@ export default function TodayScreen() {
                 returnKeyType="done"
                 onSubmitEditing={handleSaveCity}
               />
-              <Pressable
-                style={[styles.primaryButton, !cityInput.trim() && styles.buttonDisabled]}
+              <PrimaryButton
+                label="Save and get my outfit"
                 onPress={handleSaveCity}
-                disabled={!cityInput.trim()}>
-                <ThemedText style={styles.primaryButtonText}>Save and get my outfit</ThemedText>
-              </Pressable>
+                disabled={!cityInput.trim()}
+              />
             </ThemedView>
           )}
 
           {status === 'error' && (
-            <ThemedView type="backgroundElement" style={styles.card}>
-              <ThemedText type="small" style={styles.errorText}>
+            <ThemedView type="backgroundElement" style={[styles.card, CardShadow]}>
+              <ThemedText type="small" style={{ color: theme.danger }}>
                 {error}
               </ThemedText>
-              <Pressable style={styles.primaryButton} onPress={() => runGenerate()}>
-                <ThemedText style={styles.primaryButtonText}>Try again</ThemedText>
-              </Pressable>
+              <PrimaryButton label="Try again" onPress={() => runGenerate()} />
               <Pressable onPress={() => setStatus('needs-city')}>
                 <ThemedText type="linkPrimary" style={styles.centerText}>
                   Use a different city
@@ -303,22 +299,16 @@ export default function TodayScreen() {
                   returnKeyType="done"
                   onSubmitEditing={handleGenerateEvent}
                 />
-                <Pressable
-                  style={[
-                    styles.eventButton,
-                    (!eventPromptInput.trim() || eventGenerating) && styles.buttonDisabled,
-                  ]}
+                <PrimaryButton
+                  label="Get outfit"
                   onPress={handleGenerateEvent}
-                  disabled={!eventPromptInput.trim() || eventGenerating}>
-                  {eventGenerating ? (
-                    <ActivityIndicator color="#fff" />
-                  ) : (
-                    <ThemedText style={styles.primaryButtonText}>Get outfit</ThemedText>
-                  )}
-                </Pressable>
+                  loading={eventGenerating}
+                  disabled={!eventPromptInput.trim()}
+                  style={styles.eventButton}
+                />
               </ThemedView>
               {eventError && (
-                <ThemedText type="small" style={styles.errorText}>
+                <ThemedText type="small" style={{ color: theme.danger }}>
                   {eventError}
                 </ThemedText>
               )}
@@ -383,32 +373,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   eventButton: {
-    backgroundColor: '#208AEF',
-    borderRadius: Spacing.two,
     paddingHorizontal: Spacing.three,
-    justifyContent: 'center',
   },
   input: {
     borderRadius: Spacing.two,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.three,
     fontSize: 16,
-  },
-  primaryButton: {
-    backgroundColor: '#208AEF',
-    borderRadius: Spacing.two,
-    paddingVertical: Spacing.three,
-    alignItems: 'center',
-  },
-  primaryButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  buttonDisabled: {
-    opacity: 0.5,
-  },
-  errorText: {
-    color: '#d33',
   },
 });

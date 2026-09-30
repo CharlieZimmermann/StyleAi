@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, TextInput } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AnimatedIcon } from '@/components/animated-icon';
+import { AnimatedPressable } from '@/components/animated-pressable';
+import { PrimaryButton } from '@/components/primary-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { BottomTabInset, CardShadow, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useAuth } from '@/context/auth-context';
 import { useTheme } from '@/hooks/use-theme';
 import { changePassword, deleteMyAccount } from '@/lib/account';
@@ -133,21 +135,21 @@ export default function AccountScreen() {
             </ThemedText>
           </ThemedView>
 
-          <ThemedView type="backgroundElement" style={styles.card}>
+          <ThemedView type="backgroundElement" style={[styles.card, CardShadow]}>
             <ThemedText type="small" themeColor="textSecondary">
               Signed in as
             </ThemedText>
             <ThemedText type="smallBold">{session?.user.email}</ThemedText>
 
-            <Pressable
+            <AnimatedPressable
               style={[styles.signOutButton, signingOut && styles.buttonDisabled]}
               onPress={handleSignOut}
               disabled={signingOut}>
               {signingOut ? <ActivityIndicator /> : <ThemedText type="linkPrimary">Sign out</ThemedText>}
-            </Pressable>
+            </AnimatedPressable>
           </ThemedView>
 
-          <ThemedView type="backgroundElement" style={styles.card}>
+          <ThemedView type="backgroundElement" style={[styles.card, CardShadow]}>
             <ThemedText type="smallBold">Style preferences</ThemedText>
             <ThemedText type="small" themeColor="textSecondary">
               Used by the wardrobe gap-finder in the Closet tab to suggest items that fit your
@@ -198,21 +200,17 @@ export default function AccountScreen() {
                   autoCapitalize="none"
                 />
 
-                <Pressable
-                  style={[styles.saveButton, savingPrefs && styles.buttonDisabled]}
+                <PrimaryButton
+                  label="Save preferences"
                   onPress={handleSavePreferences}
-                  disabled={savingPrefs}>
-                  {savingPrefs ? (
-                    <ActivityIndicator color="#fff" />
-                  ) : (
-                    <ThemedText style={styles.saveButtonText}>Save preferences</ThemedText>
-                  )}
-                </Pressable>
+                  loading={savingPrefs}
+                  style={styles.saveButton}
+                />
               </>
             )}
           </ThemedView>
 
-          <ThemedView type="backgroundElement" style={styles.card}>
+          <ThemedView type="backgroundElement" style={[styles.card, CardShadow]}>
             <ThemedText type="smallBold">Change password</ThemedText>
             <TextInput
               style={[styles.input, { backgroundColor: theme.background, color: theme.text }]}
@@ -232,36 +230,27 @@ export default function AccountScreen() {
               value={confirmPassword}
               onChangeText={setConfirmPassword}
             />
-            <Pressable
-              style={[
-                styles.saveButton,
-                (changingPassword || !newPassword || !confirmPassword) && styles.buttonDisabled,
-              ]}
+            <PrimaryButton
+              label="Update password"
               onPress={handleChangePassword}
-              disabled={changingPassword || !newPassword || !confirmPassword}>
-              {changingPassword ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <ThemedText style={styles.saveButtonText}>Update password</ThemedText>
-              )}
-            </Pressable>
+              loading={changingPassword}
+              disabled={!newPassword || !confirmPassword}
+              style={styles.saveButton}
+            />
           </ThemedView>
 
-          <ThemedView type="backgroundElement" style={styles.card}>
+          <ThemedView type="backgroundElement" style={[styles.card, CardShadow]}>
             <ThemedText type="smallBold">Danger zone</ThemedText>
             <ThemedText type="small" themeColor="textSecondary">
               Permanently deletes your account, closet, outfits, and photos. This cannot be undone.
             </ThemedText>
-            <Pressable
-              style={[styles.deleteButton, deleting && styles.buttonDisabled]}
+            <PrimaryButton
+              label="Delete Account"
               onPress={handleDeleteAccount}
-              disabled={deleting}>
-              {deleting ? (
-                <ActivityIndicator />
-              ) : (
-                <ThemedText style={styles.deleteButtonText}>Delete Account</ThemedText>
-              )}
-            </Pressable>
+              loading={deleting}
+              variant="dangerOutline"
+              style={styles.deleteButton}
+            />
           </ThemedView>
         </ScrollView>
       </SafeAreaView>
@@ -318,31 +307,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   saveButton: {
-    backgroundColor: '#208AEF',
-    borderRadius: Spacing.two,
-    paddingVertical: Spacing.three,
-    alignItems: 'center',
     marginTop: Spacing.two,
-  },
-  saveButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
   },
   buttonDisabled: {
     opacity: 0.6,
   },
   deleteButton: {
-    borderRadius: Spacing.two,
-    paddingVertical: Spacing.three,
-    alignItems: 'center',
     marginTop: Spacing.two,
-    borderWidth: 1,
-    borderColor: '#D9342B',
-  },
-  deleteButtonText: {
-    color: '#D9342B',
-    fontSize: 16,
-    fontWeight: '600',
   },
 });

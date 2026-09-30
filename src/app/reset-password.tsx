@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, TextInput } from 'react-native';
+import { StyleSheet, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { PrimaryButton } from '@/components/primary-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
@@ -78,18 +79,15 @@ export default function ResetPasswordScreen() {
           onSubmitEditing={handleSubmit}
         />
 
-        {error && <ThemedText style={styles.error}>{error}</ThemedText>}
+        {error && <ThemedText style={{ color: theme.danger }}>{error}</ThemedText>}
 
-        <Pressable
-          style={[styles.button, (submitting || !newPassword || !confirmPassword) && styles.buttonDisabled]}
+        <PrimaryButton
+          label="Set password"
           onPress={handleSubmit}
-          disabled={submitting || !newPassword || !confirmPassword}>
-          {submitting ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <ThemedText style={styles.buttonText}>Set password</ThemedText>
-          )}
-        </Pressable>
+          loading={submitting}
+          disabled={!newPassword || !confirmPassword}
+          style={styles.button}
+        />
       </SafeAreaView>
     </ThemedView>
   );
@@ -115,21 +113,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   button: {
-    backgroundColor: '#208AEF',
-    borderRadius: Spacing.two,
-    paddingVertical: Spacing.three,
-    alignItems: 'center',
     marginTop: Spacing.two,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  error: {
-    color: '#d33',
   },
 });

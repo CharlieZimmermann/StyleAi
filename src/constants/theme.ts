@@ -14,6 +14,9 @@ export const Colors = {
     backgroundElement: '#F0F0F3',
     backgroundSelected: '#E0E1E6',
     textSecondary: '#60646C',
+    tint: '#208AEF',
+    tintText: '#ffffff',
+    danger: '#D9342B',
   },
   dark: {
     text: '#ffffff',
@@ -21,10 +24,30 @@ export const Colors = {
     backgroundElement: '#212225',
     backgroundSelected: '#2E3135',
     textSecondary: '#B0B4BA',
+    tint: '#4DA3FF',
+    tintText: '#ffffff',
+    danger: '#FF6B61',
   },
 } as const;
 
 export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
+
+// Subtle depth for cards on top of the flat backgroundElement fills --
+// spread into a card's style. iOS uses real shadow props; Android (which
+// ignores those) uses elevation instead. Deliberately understated (this is
+// a light UI, not a heavy skeuomorphic one).
+export const CardShadow = Platform.select({
+  ios: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+  },
+  android: {
+    elevation: 3,
+  },
+  default: {},
+});
 
 export const Fonts = Platform.select({
   ios: {

@@ -2,12 +2,15 @@ import { Image } from 'expo-image';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Linking, Pressable, StyleSheet, useWindowDimensions } from 'react-native';
+import Animated, { FadeInUp } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AnimatedPressable } from '@/components/animated-pressable';
 import { OutfitCard } from '@/components/outfit-card';
+import { PrimaryButton } from '@/components/primary-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { BottomTabInset, Spacing } from '@/constants/theme';
+import { BottomTabInset, CardShadow, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { listClothingItems } from '@/lib/clothing-items';
 import { errorMessage } from '@/lib/errors';
@@ -149,7 +152,11 @@ export default function ClosetScreen() {
             const active = segment === value;
             const label = value === 'items' ? 'Items' : value === 'saved' ? 'Saved Outfits' : 'Wishlist';
             return (
-              <Pressable key={value} style={styles.segmentButton} onPress={() => setSegment(value)}>
+              <AnimatedPressable
+                key={value}
+                scaleTo={0.97}
+                style={styles.segmentButton}
+                onPress={() => setSegment(value)}>
                 <ThemedView
                   type={active ? 'backgroundSelected' : 'backgroundElement'}
                   style={styles.segmentInner}>
@@ -157,7 +164,7 @@ export default function ClosetScreen() {
                     {label}
                   </ThemedText>
                 </ThemedView>
-              </Pressable>
+              </AnimatedPressable>
             );
           })}
         </ThemedView>
@@ -177,7 +184,7 @@ export default function ClosetScreen() {
               renderItem={({ item: chip }) => {
                 const active = chip === filter;
                 return (
-                  <Pressable onPress={() => setFilter(chip)}>
+                  <AnimatedPressable scaleTo={0.94} onPress={() => setFilter(chip)}>
                     <ThemedView
                       type={active ? 'backgroundSelected' : 'backgroundElement'}
                       style={styles.filterChip}>
@@ -185,7 +192,7 @@ export default function ClosetScreen() {
                         {filterLabel(chip)}
                       </ThemedText>
                     </ThemedView>
-                  </Pressable>
+                  </AnimatedPressable>
                 );
               }}
             />
@@ -196,7 +203,7 @@ export default function ClosetScreen() {
               </ThemedView>
             ) : itemsError ? (
               <ThemedView style={styles.centered}>
-                <ThemedText type="small" style={styles.errorText}>
+                <ThemedText type="small" style={[styles.errorText, { color: theme.danger }]}>
                   {itemsError}
                 </ThemedText>
               </ThemedView>
@@ -218,35 +225,36 @@ export default function ClosetScreen() {
                 contentContainerStyle={[styles.grid, { paddingBottom: BottomTabInset + Spacing.four }]}
                 columnWrapperStyle={{ gap: gridGap }}
                 ItemSeparatorComponent={() => <ThemedView style={{ height: gridGap }} />}
-                renderItem={({ item }) => {
+                renderItem={({ item, index }) => {
                   const label = clothingItemLabel(item);
                   return (
-                    <Pressable onPress={() => router.push(`/closet/${item.id}`)}>
-                      <ThemedView type="backgroundElement" style={[styles.card, { width: cardWidth }]}>
-                        {item.signedUrl ? (
-                          <Image
-                            source={{ uri: item.signedUrl }}
-                            style={[
-                              styles.cardImage,
-                              { width: cardWidth, backgroundColor: theme.backgroundSelected },
-                            ]}
-                            contentFit="cover"
-                          />
-                        ) : (
-                          <ThemedView type="backgroundSelected" style={[styles.cardImage, { width: cardWidth }]} />
-                        )}
-                        <ThemedView style={styles.cardLabel}>
-                          <ThemedText type="smallBold" numberOfLines={1}>
-                            {label.title}
-                          </ThemedText>
-                          {label.subtitle && (
-                            <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
-                              {label.subtitle}
-                            </ThemedText>
+                    <Animated.View
+                      entering={FadeInUp.duration(300).delay(Math.min(index, 9) * 40).springify().damping(18)}
+                      style={[{ width: cardWidth }, CardShadow]}>
+                      <AnimatedPressable scaleTo={0.97} onPress={() => router.push(`/closet/${item.id}`)}>
+                        <ThemedView type="backgroundElement" style={styles.card}>
+                          {item.signedUrl ? (
+                            <Image
+                              source={{ uri: item.signedUrl }}
+                              style={[styles.cardImage, { backgroundColor: theme.backgroundSelected }]}
+                              contentFit="cover"
+                            />
+                          ) : (
+                            <ThemedView type="backgroundSelected" style={styles.cardImage} />
                           )}
+                          <ThemedView style={styles.cardLabel}>
+                            <ThemedText type="smallBold" numberOfLines={1}>
+                              {label.title}
+                            </ThemedText>
+                            {label.subtitle && (
+                              <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+                                {label.subtitle}
+                              </ThemedText>
+                            )}
+                          </ThemedView>
                         </ThemedView>
-                      </ThemedView>
-                    </Pressable>
+                      </AnimatedPressable>
+                    </Animated.View>
                   );
                 }}
               />
@@ -259,7 +267,7 @@ export default function ClosetScreen() {
             </ThemedView>
           ) : savedError ? (
             <ThemedView style={styles.centered}>
-              <ThemedText type="small" style={styles.errorText}>
+              <ThemedText type="small" style={[styles.errorText, { color: theme.danger }]}>
                 {savedError}
               </ThemedText>
             </ThemedView>
@@ -287,20 +295,11 @@ export default function ClosetScreen() {
                 Staples missing from your closet, based on what you own and your preferences (set in
                 the Account tab).
               </ThemedText>
-              <Pressable
-                style={[styles.primaryButton, findingGaps && styles.buttonDisabled]}
-                onPress={handleFindGaps}
-                disabled={findingGaps}>
-                {findingGaps ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <ThemedText style={styles.primaryButtonText}>Find gaps</ThemedText>
-                )}
-              </Pressable>
+              <PrimaryButton label="Find gaps" onPress={handleFindGaps} loading={findingGaps} />
             </ThemedView>
 
             {wishlistError && (
-              <ThemedText type="small" style={styles.errorText}>
+              <ThemedText type="small" style={[styles.errorText, { color: theme.danger }]}>
                 {wishlistError}
               </ThemedText>
             )}
@@ -321,8 +320,10 @@ export default function ClosetScreen() {
                 keyExtractor={(item) => item.id}
                 contentContainerStyle={[styles.savedList, { paddingBottom: BottomTabInset + Spacing.four }]}
                 ItemSeparatorComponent={() => <ThemedView style={styles.savedSeparator} />}
-                renderItem={({ item }) => (
-                  <ThemedView type="backgroundElement" style={styles.suggestionCard}>
+                renderItem={({ item, index }) => (
+                  <Animated.View
+                    entering={FadeInUp.duration(300).delay(Math.min(index, 9) * 50).springify().damping(18)}>
+                    <ThemedView type="backgroundElement" style={[styles.suggestionCard, CardShadow]}>
                     <ThemedText type="smallBold">{item.productName}</ThemedText>
                     {item.brand && (
                       <ThemedText type="small" themeColor="textSecondary">
@@ -346,6 +347,7 @@ export default function ClosetScreen() {
                       </Pressable>
                     </ThemedView>
                   </ThemedView>
+                  </Animated.View>
                 )}
               />
             )}
@@ -427,17 +429,6 @@ const styles = StyleSheet.create({
   wishlistIntroText: {
     lineHeight: 20,
   },
-  primaryButton: {
-    backgroundColor: '#208AEF',
-    borderRadius: Spacing.two,
-    paddingVertical: Spacing.three,
-    alignItems: 'center',
-  },
-  primaryButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
   suggestionCard: {
     gap: Spacing.two,
     padding: Spacing.three,
@@ -448,9 +439,6 @@ const styles = StyleSheet.create({
     gap: Spacing.four,
     marginTop: Spacing.one,
   },
-  buttonDisabled: {
-    opacity: 0.5,
-  },
   centered: {
     flex: 1,
     alignItems: 'center',
@@ -459,7 +447,6 @@ const styles = StyleSheet.create({
   },
   errorText: {
     textAlign: 'center',
-    color: '#d33',
   },
   emptyText: {
     textAlign: 'center',

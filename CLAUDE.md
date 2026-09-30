@@ -144,6 +144,20 @@ treated the same as an API error and also triggers fallback) used by all
 three AI functions -- add new Gemini call sites through `generateJson()`
 there rather than duplicating the retry logic.
 
+## Animation (react-native-reanimated)
+
+`app.json` has `experiments.reactCompiler: true`. React Compiler's
+immutability analysis doesn't know Reanimated's shared-value mutation model
+is intentional, and flags a plain `sv.value = ...` write (or even a bare
+`.value` read in some positions) as illegal mutation --
+`react-hooks/immutability` lint errors, not a real bug. Use `sv.get()` /
+`sv.set(...)` instead of `.value` everywhere in this codebase (Reanimated's
+own React-Compiler-compliant alternative, same behavior) -- see
+`src/components/animated-pressable.tsx` and `outfit-card.tsx`'s star bounce
+for the pattern. `AnimatedPressable` (tactile press-shrink feedback) and
+`CardShadow` (`src/constants/theme.ts`) are the two shared building blocks
+for new UI -- reach for those instead of a bare `Pressable`/flat card.
+
 ## Auth deep links
 
 Password reset (`src/context/auth-context.tsx` + `src/app/reset-password.tsx`)

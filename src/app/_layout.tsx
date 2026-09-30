@@ -46,6 +46,9 @@ const errorStyles = StyleSheet.create({
   message: {
     textAlign: 'center',
   },
+  // Hardcoded, not theme.tint: this screen exists to render when something
+  // has already gone wrong, so it deliberately doesn't depend on the theme
+  // system (or anything else) being in a working state.
   button: {
     backgroundColor: '#208AEF',
     borderRadius: Spacing.two,

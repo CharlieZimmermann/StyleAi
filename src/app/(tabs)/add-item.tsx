@@ -6,9 +6,11 @@ import { useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AnimatedPressable } from '@/components/animated-pressable';
+import { PrimaryButton } from '@/components/primary-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { BottomTabInset, Spacing } from '@/constants/theme';
+import { BottomTabInset, CardShadow, Spacing } from '@/constants/theme';
 import { useAuth } from '@/context/auth-context';
 import { useTheme } from '@/hooks/use-theme';
 import { requestClothingTags } from '@/lib/ai-tagging';
@@ -153,16 +155,16 @@ export default function AddItemScreen() {
             </Pressable>
           ) : (
             <ThemedView style={styles.pickerRow}>
-              <Pressable style={styles.pickerButton} onPress={handleTakePhoto}>
+              <AnimatedPressable style={[styles.pickerButton, CardShadow]} onPress={handleTakePhoto}>
                 <ThemedView type="backgroundElement" style={styles.pickerButtonInner}>
                   <ThemedText type="link">Take Photo</ThemedText>
                 </ThemedView>
-              </Pressable>
-              <Pressable style={styles.pickerButton} onPress={handlePickFromLibrary}>
+              </AnimatedPressable>
+              <AnimatedPressable style={[styles.pickerButton, CardShadow]} onPress={handlePickFromLibrary}>
                 <ThemedView type="backgroundElement" style={styles.pickerButtonInner}>
                   <ThemedText type="link">Choose from Library</ThemedText>
                 </ThemedView>
-              </Pressable>
+              </AnimatedPressable>
             </ThemedView>
           )}
 
@@ -177,7 +179,7 @@ export default function AddItemScreen() {
                 </ThemedView>
               )}
               {tagError && (
-                <ThemedText type="small" style={styles.errorText}>
+                <ThemedText type="small" style={{ color: theme.danger }}>
                   {tagError} You can still fill this in yourself below.
                 </ThemedText>
               )}
@@ -196,7 +198,7 @@ export default function AddItemScreen() {
                 {CLOTHING_CATEGORIES.map((value) => {
                   const active = category === value;
                   return (
-                    <Pressable key={value} onPress={() => setCategory(value)}>
+                    <AnimatedPressable scaleTo={0.94} key={value} onPress={() => setCategory(value)}>
                       <ThemedView
                         type={active ? 'backgroundSelected' : 'backgroundElement'}
                         style={styles.chip}>
@@ -204,7 +206,7 @@ export default function AddItemScreen() {
                           {CATEGORY_LABELS[value]}
                         </ThemedText>
                       </ThemedView>
-                    </Pressable>
+                    </AnimatedPressable>
                   );
                 })}
               </ThemedView>
@@ -214,7 +216,7 @@ export default function AddItemScreen() {
                 {SEASONS.map((value) => {
                   const active = season === value;
                   return (
-                    <Pressable key={value} onPress={() => setSeason(value)}>
+                    <AnimatedPressable scaleTo={0.94} key={value} onPress={() => setSeason(value)}>
                       <ThemedView
                         type={active ? 'backgroundSelected' : 'backgroundElement'}
                         style={styles.chip}>
@@ -222,7 +224,7 @@ export default function AddItemScreen() {
                           {SEASON_LABELS[value]}
                         </ThemedText>
                       </ThemedView>
-                    </Pressable>
+                    </AnimatedPressable>
                   );
                 })}
               </ThemedView>
@@ -245,18 +247,13 @@ export default function AddItemScreen() {
                 onChangeText={setBrand}
               />
 
-              <Pressable
-                style={[styles.saveButton, !canSave && styles.saveButtonDisabled]}
+              <PrimaryButton
+                label={category ? 'Save to Closet' : 'Pick a category to save'}
                 onPress={handleSave}
-                disabled={!canSave}>
-                {saving ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <ThemedText style={styles.saveButtonText}>
-                    {category ? 'Save to Closet' : 'Pick a category to save'}
-                  </ThemedText>
-                )}
-              </Pressable>
+                loading={saving}
+                disabled={!canSave}
+                style={styles.saveButton}
+              />
             </ThemedView>
           )}
         </ScrollView>
@@ -310,9 +307,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.two,
   },
-  errorText: {
-    color: '#d33',
-  },
   chipWrap: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -332,18 +326,6 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.two,
   },
   saveButton: {
-    backgroundColor: '#208AEF',
-    borderRadius: Spacing.two,
-    paddingVertical: Spacing.three,
-    alignItems: 'center',
     marginTop: Spacing.two,
-  },
-  saveButtonDisabled: {
-    opacity: 0.5,
-  },
-  saveButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
   },
 });

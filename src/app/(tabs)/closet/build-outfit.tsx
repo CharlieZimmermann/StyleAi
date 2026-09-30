@@ -3,11 +3,14 @@ import { SymbolView } from 'expo-symbols';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, useWindowDimensions } from 'react-native';
+import Animated, { FadeInUp } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AnimatedPressable } from '@/components/animated-pressable';
+import { PrimaryButton } from '@/components/primary-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { BottomTabInset, Spacing } from '@/constants/theme';
+import { BottomTabInset, CardShadow, Spacing } from '@/constants/theme';
 import { useAuth } from '@/context/auth-context';
 import { useTheme } from '@/hooks/use-theme';
 import { errorMessage } from '@/lib/errors';
@@ -87,7 +90,7 @@ export default function BuildOutfitScreen() {
           </ThemedView>
         ) : loadError ? (
           <ThemedView style={styles.centered}>
-            <ThemedText type="small" style={styles.errorText}>
+            <ThemedText type="small" style={[styles.errorText, { color: theme.danger }]}>
               {loadError}
             </ThemedText>
           </ThemedView>
@@ -105,40 +108,44 @@ export default function BuildOutfitScreen() {
             contentContainerStyle={[styles.grid, { paddingBottom: BottomTabInset + Spacing.six }]}
             columnWrapperStyle={{ gap: gridGap }}
             ItemSeparatorComponent={() => <ThemedView style={{ height: gridGap }} />}
-            renderItem={({ item }) => {
+            renderItem={({ item, index }) => {
               const label = clothingItemLabel(item);
               const isSelected = selected.has(item.id);
               return (
-                <Pressable onPress={() => toggle(item.id)}>
-                  <ThemedView
-                    type={isSelected ? 'backgroundSelected' : 'backgroundElement'}
-                    style={[styles.card, { width: cardWidth }, isSelected && styles.cardSelected]}>
-                    {item.signedUrl ? (
-                      <Image
-                        source={{ uri: item.signedUrl }}
-                        style={[styles.cardImage, { width: cardWidth, backgroundColor: theme.backgroundSelected }]}
-                        contentFit="cover"
-                      />
-                    ) : (
-                      <ThemedView type="backgroundSelected" style={[styles.cardImage, { width: cardWidth }]} />
-                    )}
-                    {isSelected && (
-                      <ThemedView style={styles.checkBadge}>
-                        <SymbolView tintColor="#fff" name="checkmark" size={14} />
-                      </ThemedView>
-                    )}
-                    <ThemedView style={styles.cardLabel}>
-                      <ThemedText type="smallBold" numberOfLines={1}>
-                        {label.title}
-                      </ThemedText>
-                      {label.subtitle && (
-                        <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
-                          {label.subtitle}
-                        </ThemedText>
+                <Animated.View
+                  entering={FadeInUp.duration(300).delay(Math.min(index, 9) * 40).springify().damping(18)}
+                  style={[{ width: cardWidth }, CardShadow]}>
+                  <AnimatedPressable scaleTo={0.97} onPress={() => toggle(item.id)}>
+                    <ThemedView
+                      type={isSelected ? 'backgroundSelected' : 'backgroundElement'}
+                      style={[styles.card, isSelected && { borderColor: theme.tint, borderWidth: 2 }]}>
+                      {item.signedUrl ? (
+                        <Image
+                          source={{ uri: item.signedUrl }}
+                          style={[styles.cardImage, { backgroundColor: theme.backgroundSelected }]}
+                          contentFit="cover"
+                        />
+                      ) : (
+                        <ThemedView type="backgroundSelected" style={styles.cardImage} />
                       )}
+                      {isSelected && (
+                        <ThemedView style={[styles.checkBadge, { backgroundColor: theme.tint }]}>
+                          <SymbolView tintColor={theme.tintText} name="checkmark" size={14} />
+                        </ThemedView>
+                      )}
+                      <ThemedView style={styles.cardLabel}>
+                        <ThemedText type="smallBold" numberOfLines={1}>
+                          {label.title}
+                        </ThemedText>
+                        {label.subtitle && (
+                          <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+                            {label.subtitle}
+                          </ThemedText>
+                        )}
+                      </ThemedView>
                     </ThemedView>
-                  </ThemedView>
-                </Pressable>
+                  </AnimatedPressable>
+                </Animated.View>
               );
             }}
           />
@@ -146,16 +153,11 @@ export default function BuildOutfitScreen() {
 
         {selected.size > 0 && (
           <ThemedView style={[styles.saveBar, { paddingBottom: BottomTabInset + Spacing.two }]}>
-            <Pressable
-              style={[styles.saveButton, saving && styles.buttonDisabled]}
+            <PrimaryButton
+              label={`Save outfit (${selected.size})`}
               onPress={handleSave}
-              disabled={saving}>
-              {saving ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <ThemedText style={styles.saveButtonText}>Save outfit ({selected.size})</ThemedText>
-              )}
-            </Pressable>
+              loading={saving}
+            />
           </ThemedView>
         )}
       </SafeAreaView>
@@ -200,10 +202,6 @@ const styles = StyleSheet.create({
     borderRadius: Spacing.three,
     overflow: 'hidden',
   },
-  cardSelected: {
-    borderWidth: 2,
-    borderColor: '#208AEF',
-  },
   cardImage: {
     aspectRatio: 1,
   },
@@ -218,27 +216,12 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#208AEF',
     alignItems: 'center',
     justifyContent: 'center',
   },
   saveBar: {
     paddingHorizontal: Spacing.four,
     paddingTop: Spacing.two,
-  },
-  saveButton: {
-    backgroundColor: '#208AEF',
-    borderRadius: Spacing.two,
-    paddingVertical: Spacing.three,
-    alignItems: 'center',
-  },
-  saveButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  buttonDisabled: {
-    opacity: 0.5,
   },
   centered: {
     flex: 1,
@@ -251,6 +234,5 @@ const styles = StyleSheet.create({
   },
   errorText: {
     textAlign: 'center',
-    color: '#d33',
   },
 });

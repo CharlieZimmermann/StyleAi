@@ -5,6 +5,8 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AnimatedPressable } from '@/components/animated-pressable';
+import { PrimaryButton } from '@/components/primary-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
@@ -118,7 +120,7 @@ export default function ItemDetailScreen() {
           </ThemedView>
         ) : loadError || !item ? (
           <ThemedView style={styles.centered}>
-            <ThemedText type="small" style={styles.errorText}>
+            <ThemedText type="small" style={[styles.errorText, { color: theme.danger }]}>
               {loadError ?? 'Could not load this item.'}
             </ThemedText>
           </ThemedView>
@@ -149,7 +151,7 @@ export default function ItemDetailScreen() {
                 {CLOTHING_CATEGORIES.map((value) => {
                   const active = category === value;
                   return (
-                    <Pressable key={value} onPress={() => setCategory(value)}>
+                    <AnimatedPressable scaleTo={0.94} key={value} onPress={() => setCategory(value)}>
                       <ThemedView
                         type={active ? 'backgroundSelected' : 'backgroundElement'}
                         style={styles.chip}>
@@ -157,7 +159,7 @@ export default function ItemDetailScreen() {
                           {CATEGORY_LABELS[value]}
                         </ThemedText>
                       </ThemedView>
-                    </Pressable>
+                    </AnimatedPressable>
                   );
                 })}
               </ThemedView>
@@ -167,7 +169,7 @@ export default function ItemDetailScreen() {
                 {SEASONS.map((value) => {
                   const active = season === value;
                   return (
-                    <Pressable key={value} onPress={() => setSeason(value)}>
+                    <AnimatedPressable scaleTo={0.94} key={value} onPress={() => setSeason(value)}>
                       <ThemedView
                         type={active ? 'backgroundSelected' : 'backgroundElement'}
                         style={styles.chip}>
@@ -175,7 +177,7 @@ export default function ItemDetailScreen() {
                           {SEASON_LABELS[value]}
                         </ThemedText>
                       </ThemedView>
-                    </Pressable>
+                    </AnimatedPressable>
                   );
                 })}
               </ThemedView>
@@ -198,29 +200,20 @@ export default function ItemDetailScreen() {
                 onChangeText={setBrand}
               />
 
-              <Pressable
-                style={[styles.saveButton, (!category || saving) && styles.buttonDisabled]}
+              <PrimaryButton
+                label="Save changes"
                 onPress={handleSave}
-                disabled={!category || saving}>
-                {saving ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <ThemedText style={styles.saveButtonText}>Save changes</ThemedText>
-                )}
-              </Pressable>
+                loading={saving}
+                disabled={!category}
+                style={styles.saveButton}
+              />
 
-              <Pressable
-                style={[styles.deleteButton, deleting && styles.buttonDisabled]}
+              <PrimaryButton
+                label="Delete item"
                 onPress={handleDelete}
-                disabled={deleting}>
-                {deleting ? (
-                  <ActivityIndicator />
-                ) : (
-                  <ThemedText type="small" style={styles.deleteButtonText}>
-                    Delete item
-                  </ThemedText>
-                )}
-              </Pressable>
+                loading={deleting}
+                variant="dangerText"
+              />
             </ThemedView>
           </ScrollView>
         )}
@@ -280,26 +273,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.two,
   },
   saveButton: {
-    backgroundColor: '#208AEF',
-    borderRadius: Spacing.two,
-    paddingVertical: Spacing.three,
-    alignItems: 'center',
     marginTop: Spacing.two,
-  },
-  saveButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  deleteButton: {
-    alignItems: 'center',
-    paddingVertical: Spacing.three,
-  },
-  deleteButtonText: {
-    color: '#d33',
-  },
-  buttonDisabled: {
-    opacity: 0.5,
   },
   centered: {
     flex: 1,
@@ -309,6 +283,5 @@ const styles = StyleSheet.create({
   },
   errorText: {
     textAlign: 'center',
-    color: '#d33',
   },
 });

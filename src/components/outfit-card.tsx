@@ -1,11 +1,19 @@
 import { Image } from 'expo-image';
 import { SymbolView } from 'expo-symbols';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, StyleSheet } from 'react-native';
+import { ActivityIndicator, Alert, StyleSheet } from 'react-native';
+import Animated, {
+  FadeInUp,
+  useAnimatedStyle,
+  useSharedValue,
+  withSequence,
+  withSpring,
+} from 'react-native-reanimated';
 
+import { AnimatedPressable } from '@/components/animated-pressable';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { CardShadow, Spacing } from '@/constants/theme';
 import { useAuth } from '@/context/auth-context';
 import { useTheme } from '@/hooks/use-theme';
 import { errorMessage } from '@/lib/errors';
@@ -21,12 +29,15 @@ type Props = {
 };
 
 /** One outfit: its items, the AI's reason, and Wear/Save actions. Reused by
- * the Today tab (daily + event outfits) and the Closet tab's Saved section. */
+ * the Today tab (daily + event outfits) and the Closet tab's Saved section.
+ * Reveals itself in (per the original product doc's "outfit reveal" first-
+ * class animation requirement) rather than appearing instantly. */
 export function OutfitCard({ outfit, onChange, showWeather = false }: Props) {
   const theme = useTheme();
   const { session } = useAuth();
   const [wearing, setWearing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const starScale = useSharedValue(1);
 
   async function handleWear() {
     if (!session) return;
@@ -46,6 +57,8 @@ export function OutfitCard({ outfit, onChange, showWeather = false }: Props) {
 
   async function handleToggleSaved() {
     setSaving(true);
+    // .set(), not .value = -- see the note in animated-pressable.tsx.
+    starScale.set(withSequence(withSpring(1.35, { damping: 8 }), withSpring(1, { damping: 10 })));
     try {
       const next = !outfit.isSaved;
       await setOutfitSaved(outfit.id, next);
@@ -57,8 +70,10 @@ export function OutfitCard({ outfit, onChange, showWeather = false }: Props) {
     }
   }
 
+  const starAnimatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: starScale.get() }] }));
+
   return (
-    <ThemedView style={styles.wrapper}>
+    <Animated.View entering={FadeInUp.duration(450).springify().damping(16)} style={styles.wrapper}>
       {outfit.eventPrompt && (
         <ThemedText type="smallBold" numberOfLines={1}>
           For: {outfit.eventPrompt}
@@ -66,7 +81,7 @@ export function OutfitCard({ outfit, onChange, showWeather = false }: Props) {
       )}
 
       {showWeather && outfit.weather && (
-        <ThemedView type="backgroundElement" style={styles.weatherRow}>
+        <ThemedView type="backgroundElement" style={[styles.weatherRow, CardShadow]}>
           <ThemedText type="smallBold">{outfit.weather.condition}</ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
             {outfit.weather.temperatureF}°F (feels {outfit.weather.feelsLikeF}°F)
@@ -75,55 +90,64 @@ export function OutfitCard({ outfit, onChange, showWeather = false }: Props) {
       )}
 
       <ThemedView style={styles.grid}>
-        {outfit.items.map((item) => {
+        {outfit.items.map((item, index) => {
           const label = clothingItemLabel(item);
           return (
-            <ThemedView key={item.id} type="backgroundElement" style={styles.itemCard}>
-              {item.signedUrl ? (
-                <Image
-                  source={{ uri: item.signedUrl }}
-                  style={[styles.itemImage, { backgroundColor: theme.backgroundSelected }]}
-                  contentFit="cover"
-                />
-              ) : (
-                <ThemedView type="backgroundSelected" style={styles.itemImage} />
-              )}
-              <ThemedView style={styles.itemLabel}>
-                <ThemedText type="smallBold" numberOfLines={1}>
-                  {label.title}
-                </ThemedText>
-                {label.subtitle && (
-                  <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
-                    {label.subtitle}
-                  </ThemedText>
+            <Animated.View
+              key={item.id}
+              entering={FadeInUp.duration(350).delay(index * 60).springify().damping(16)}
+              style={[styles.itemCard, CardShadow]}>
+              <ThemedView type="backgroundElement" style={styles.itemCardInner}>
+                {item.signedUrl ? (
+                  <Image
+                    source={{ uri: item.signedUrl }}
+                    style={[styles.itemImage, { backgroundColor: theme.backgroundSelected }]}
+                    contentFit="cover"
+                  />
+                ) : (
+                  <ThemedView type="backgroundSelected" style={styles.itemImage} />
                 )}
+                <ThemedView style={styles.itemLabel}>
+                  <ThemedText type="smallBold" numberOfLines={1}>
+                    {label.title}
+                  </ThemedText>
+                  {label.subtitle && (
+                    <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+                      {label.subtitle}
+                    </ThemedText>
+                  )}
+                </ThemedView>
               </ThemedView>
-            </ThemedView>
+            </Animated.View>
           );
         })}
       </ThemedView>
 
       {outfit.reason && (
-        <ThemedView type="backgroundElement" style={styles.reasonCard}>
+        <ThemedView type="backgroundElement" style={[styles.reasonCard, CardShadow]}>
           <ThemedText type="small">{outfit.reason}</ThemedText>
         </ThemedView>
       )}
 
       <ThemedView style={styles.actionRow}>
-        <Pressable
-          style={[styles.wearButton, (outfit.wornToday || wearing) && styles.buttonDisabled]}
+        <AnimatedPressable
+          style={[
+            styles.wearButton,
+            { backgroundColor: theme.tint },
+            (outfit.wornToday || wearing) && styles.buttonDisabled,
+          ]}
           onPress={handleWear}
           disabled={outfit.wornToday || wearing}>
           {wearing ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={theme.tintText} />
           ) : (
-            <ThemedText style={styles.wearButtonText}>
+            <ThemedText style={[styles.wearButtonText, { color: theme.tintText }]}>
               {outfit.wornToday ? 'Worn today ✓' : 'Wear this'}
             </ThemedText>
           )}
-        </Pressable>
+        </AnimatedPressable>
 
-        <Pressable
+        <AnimatedPressable
           style={styles.saveButton}
           onPress={handleToggleSaved}
           disabled={saving}
@@ -131,15 +155,17 @@ export function OutfitCard({ outfit, onChange, showWeather = false }: Props) {
           {saving ? (
             <ActivityIndicator />
           ) : (
-            <SymbolView
-              tintColor={outfit.isSaved ? '#208AEF' : theme.textSecondary}
-              name={outfit.isSaved ? 'star.fill' : 'star'}
-              size={22}
-            />
+            <Animated.View style={starAnimatedStyle}>
+              <SymbolView
+                tintColor={outfit.isSaved ? theme.tint : theme.textSecondary}
+                name={outfit.isSaved ? 'star.fill' : 'star'}
+                size={22}
+              />
+            </Animated.View>
           )}
-        </Pressable>
+        </AnimatedPressable>
       </ThemedView>
-    </ThemedView>
+    </Animated.View>
   );
 }
 
@@ -162,6 +188,9 @@ const styles = StyleSheet.create({
   itemCard: {
     flexBasis: '47%',
     flexGrow: 1,
+    borderRadius: Spacing.three,
+  },
+  itemCardInner: {
     borderRadius: Spacing.three,
     overflow: 'hidden',
   },
@@ -186,13 +215,11 @@ const styles = StyleSheet.create({
   },
   wearButton: {
     flex: 1,
-    backgroundColor: '#208AEF',
     borderRadius: Spacing.two,
     paddingVertical: Spacing.three,
     alignItems: 'center',
   },
   wearButtonText: {
-    color: '#fff',
     fontSize: 16,
     fontWeight: '600',
   },

@@ -1,8 +1,9 @@
 import { Link } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, TextInput } from 'react-native';
+import { StyleSheet, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { PrimaryButton } from '@/components/primary-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
@@ -57,7 +58,7 @@ export default function LoginScreen() {
           onChangeText={setPassword}
         />
 
-        {errorMessage && <ThemedText style={styles.error}>{errorMessage}</ThemedText>}
+        {errorMessage && <ThemedText style={{ color: theme.danger }}>{errorMessage}</ThemedText>}
 
         <Link href="/forgot-password" style={styles.forgotLink}>
           <ThemedText type="link" themeColor="textSecondary">
@@ -65,16 +66,13 @@ export default function LoginScreen() {
           </ThemedText>
         </Link>
 
-        <Pressable
-          style={[styles.button, submitting && styles.buttonDisabled]}
+        <PrimaryButton
+          label="Log in"
           onPress={handleLogin}
-          disabled={submitting || !email || !password}>
-          {submitting ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <ThemedText style={styles.buttonText}>Log in</ThemedText>
-          )}
-        </Pressable>
+          loading={submitting}
+          disabled={!email || !password}
+          style={styles.button}
+        />
 
         <Link href="/sign-up" style={styles.link}>
           <ThemedText type="link" themeColor="textSecondary">
@@ -106,22 +104,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   button: {
-    backgroundColor: '#208AEF',
-    borderRadius: Spacing.two,
-    paddingVertical: Spacing.three,
-    alignItems: 'center',
     marginTop: Spacing.two,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  error: {
-    color: '#d33',
   },
   link: {
     alignSelf: 'center',
