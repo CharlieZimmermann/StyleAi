@@ -164,6 +164,10 @@ export default function ClosetScreen() {
 
         {segment === 'items' ? (
           <>
+            <Pressable style={styles.buildOutfitRow} onPress={() => router.push('/closet/build-outfit')}>
+              <ThemedText type="linkPrimary">+ Build an outfit</ThemedText>
+            </Pressable>
+
             <FlatList
               horizontal
               data={FILTERS}
@@ -379,6 +383,10 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.two,
     borderRadius: Spacing.five,
     alignItems: 'center',
+  },
+  buildOutfitRow: {
+    paddingHorizontal: Spacing.four,
+    paddingBottom: Spacing.two,
   },
   filterRow: {
     gap: Spacing.two,

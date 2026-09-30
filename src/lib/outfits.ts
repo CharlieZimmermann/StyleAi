@@ -121,6 +121,38 @@ export async function listSavedOutfits(limit = 30): Promise<Outfit[]> {
   return Promise.all((data ?? []).map((row) => loadOutfit(row.id)));
 }
 
+/**
+ * Hand-assembles an outfit from chosen items, with no AI involved --
+ * closes out the outfit_type enum (daily/event were AI-generated; this is
+ * the third, manual, path). Auto-saved (is_saved: true): building one by
+ * hand is a deliberate choice to keep it, and there's no separate "manual
+ * outfit history" screen, so it needs to land somewhere findable --
+ * Closet > Saved Outfits.
+ */
+export async function createManualOutfit(userId: string, itemIds: string[]): Promise<Outfit> {
+  const { data: outfit, error: outfitError } = await supabase
+    .from('outfits')
+    .insert({
+      user_id: userId,
+      outfit_type: 'manual',
+      outfit_date: localDateString(),
+      is_saved: true,
+    })
+    .select('id')
+    .single();
+  if (outfitError || !outfit) throw outfitError ?? new Error('Could not create the outfit.');
+
+  const { error: linkError } = await supabase
+    .from('outfit_items')
+    .insert(itemIds.map((id) => ({ outfit_id: outfit.id, clothing_item_id: id })));
+  if (linkError) {
+    await supabase.from('outfits').delete().eq('id', outfit.id);
+    throw linkError;
+  }
+
+  return loadOutfit(outfit.id);
+}
+
 export async function setOutfitSaved(outfitId: string, saved: boolean) {
   const { error } = await supabase.from('outfits').update({ is_saved: saved }).eq('id', outfitId);
   if (error) throw error;
