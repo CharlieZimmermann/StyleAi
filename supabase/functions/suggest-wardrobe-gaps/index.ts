@@ -17,87 +17,21 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 
 import { CLOTHING_CATEGORIES } from '../_shared/clothing-schema.ts';
 import { corsHeaders } from '../_shared/cors.ts';
-import { generateJson } from '../_shared/gemini.ts';
 import { getPublishableKey } from '../_shared/env-keys.ts';
+import { generateJson } from '../_shared/gemini.ts';
 import { checkRateLimit, logAiCall } from '../_shared/rate-limit.ts';
+import { CATEGORY_EXAMPLES, MAX_SUGGESTIONS, RESPONSE_SCHEMA, searchUrl, validate, type Suggestion } from './logic.ts';
 
-const MAX_SUGGESTIONS = 8;
 const RATE_LIMIT_PER_DAY = 10;
 const FUNCTION_NAME = 'suggest-wardrobe-gaps';
 
-// Plain-language examples for the prompt -- "hat" and "accessory" especially
-// are broad buckets the model won't reliably unpack on its own otherwise.
-const CATEGORY_EXAMPLES: Record<(typeof CLOTHING_CATEGORIES)[number], string> = {
-  t_shirt: 'plain or graphic t-shirts',
-  shirt: 'button-up or casual shirts',
-  sweatshirt: 'sweatshirts',
-  hoodie: 'hoodies',
-  pants: 'casual pants, jeans',
-  formal_pants: 'dress/formal pants',
-  shorts: 'shorts',
-  dress_skirt: 'dresses, skirts',
-  outerwear: 'jackets, coats',
-  shoes: 'shoes (sneakers, boots, dress shoes, sandals)',
-  hat: 'hats (baseball cap, beanie, sun hat)',
-  accessory: 'accessories: sunglasses, jewelry/watches, belts, bags, scarves',
-};
-
 type ClosetItem = { category: string; color: string | null };
-
-type Suggestion = { productName: string; brand: string | null; reason: string };
-
-const RESPONSE_SCHEMA = {
-  type: 'object',
-  properties: {
-    suggestions: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          productName: { type: 'string' },
-          brand: { type: 'string', nullable: true },
-          reason: { type: 'string' },
-        },
-        required: ['productName', 'reason'],
-        propertyOrdering: ['productName', 'brand', 'reason'],
-      },
-    },
-  },
-  required: ['suggestions'],
-};
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
-}
-
-function validate(data: unknown): { ok: true; value: Suggestion[] } | { ok: false; reason: string } {
-  const parsed = data as { suggestions?: unknown } | null;
-  if (!parsed || !Array.isArray(parsed.suggestions) || parsed.suggestions.length === 0) {
-    return { ok: false, reason: 'unexpected response shape' };
-  }
-  const suggestions: Suggestion[] = [];
-  for (const item of parsed.suggestions) {
-    const candidate = item as Partial<Suggestion> | null;
-    if (!candidate || typeof candidate.productName !== 'string' || typeof candidate.reason !== 'string') {
-      return { ok: false, reason: 'a suggestion was missing productName/reason' };
-    }
-    suggestions.push({
-      productName: candidate.productName,
-      brand: typeof candidate.brand === 'string' ? candidate.brand : null,
-      reason: candidate.reason,
-    });
-  }
-  return { ok: true, value: suggestions.slice(0, MAX_SUGGESTIONS) };
-}
-
-/** A plain web search link -- not a specific product page, since there's no shopping API (yet). */
-function searchUrl(suggestion: Suggestion, preferredBrands: string[]): string {
-  const brand = suggestion.brand ?? preferredBrands[0];
-  const query = brand ? `${brand} ${suggestion.productName}` : suggestion.productName;
-  return `https://www.google.com/search?tbm=shop&q=${encodeURIComponent(query)}`;
 }
 
 Deno.serve(async (req) => {

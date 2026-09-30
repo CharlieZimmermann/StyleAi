@@ -16,12 +16,26 @@ polish, tests) before assuming a feature doesn't exist.
 
 - `npm run lint` — ESLint (`expo lint`)
 - `npm run typecheck` — `tsc --noEmit`
+- `npm test` — Jest (`jest-expo` preset); tests live in `__tests__/` folders
+  next to the code they cover, and are intentionally scoped to pure logic
+  only (e.g. `localDateString`, `clothingItemLabel`, `parseTagList`) --
+  nothing that touches Supabase/network. Needs the `moduleNameMapper`
+  entries in `package.json`'s `jest` config (path alias resolution and the
+  official AsyncStorage mock; Jest doesn't get either "for free" the way
+  Metro/the app runtime does) and `jest.setup.ts` (fake env vars, since
+  `src/lib/supabase.ts` throws at import time without them, and Jest --
+  unlike Expo's dev server -- doesn't load `.env.local`).
 - `npx --yes deno check supabase/functions/*/index.ts` — typecheck the Edge
   Functions; they're Deno, not part of the app's `tsc` project (excluded in
   `tsconfig.json`), so `npm run typecheck` does not cover them
+- `npx --yes deno test supabase/functions/*/logic.test.ts` — the Edge
+  Functions' own pure-logic tests. Each function's `index.ts` calls
+  `Deno.serve(...)` at module load time, so its testable logic lives in a
+  sibling `logic.ts` that `index.ts` imports from -- importing `index.ts`
+  itself in a test would start an actual server listener.
 - `npx expo start` — dev server (interactive; not something to run and wait
   on non-interactively)
-- `.github/workflows/ci.yml` runs the first two on every push/PR to `main`
+- `.github/workflows/ci.yml` runs all of the above on every push/PR to `main`
 
 ## Source-of-truth docs
 
