@@ -12,10 +12,13 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 import { BOTTOM_CATEGORIES, TOP_CATEGORIES } from '../_shared/clothing-schema.ts';
 import { corsHeaders } from '../_shared/cors.ts';
 import { generateJson } from '../_shared/gemini.ts';
+import { checkRateLimit, logAiCall } from '../_shared/rate-limit.ts';
 import { fetchWeather, geocodeCity, type WeatherSnapshot } from '../_shared/weather.ts';
 
 const WEAR_HISTORY_DAYS = 14;
 const MAX_EVENT_PROMPT_LENGTH = 200;
+const RATE_LIMIT_PER_DAY = 20;
+const FUNCTION_NAME = 'generate-outfit';
 
 type ClosetItem = {
   id: string;
@@ -180,6 +183,9 @@ Deno.serve(async (req) => {
   if (userError || !userData.user) return jsonResponse({ error: 'Not signed in.' }, 401);
   const userId = userData.user.id;
 
+  const rateCheck = await checkRateLimit(supabase, userId, FUNCTION_NAME, RATE_LIMIT_PER_DAY);
+  if (!rateCheck.allowed) return jsonResponse({ error: rateCheck.retryMessage }, 429);
+
   // ---- Input ----
   let body: Record<string, unknown>;
   try {
@@ -287,6 +293,11 @@ Deno.serve(async (req) => {
     );
   }
   const pick = result.value;
+  // Awaited, not fire-and-forget: an Edge Function's isolate can be frozen
+  // the moment a response is returned, which would silently drop an
+  // un-awaited write -- and a rate limit that doesn't reliably record calls
+  // doesn't limit anything.
+  await logAiCall(supabase, userId, FUNCTION_NAME);
 
   // ---- Save. A user gets one "daily" outfit per day (unique index in
   // schema.sql), so regenerating replaces today's; event outfits accumulate. ----

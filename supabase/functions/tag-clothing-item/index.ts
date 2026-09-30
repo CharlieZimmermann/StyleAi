@@ -2,26 +2,34 @@
 // Functions -- no import needed. See:
 // https://supabase.com/docs/guides/functions
 //
-// This function is a thin, stateless proxy in front of the Gemini API: the
-// client sends a photo, this returns AI-suggested clothing tags. It never
-// touches the database or Storage -- the client does that itself afterward,
-// under the RLS policies in supabase/schema.sql.
+// This function is a thin proxy in front of the Gemini API: the client sends
+// a photo, this returns AI-suggested clothing tags. It doesn't touch Storage
+// -- the client does that itself afterward, under the RLS policies in
+// supabase/schema.sql. It does talk to the database for one thing: the
+// per-user rate limit (see _shared/rate-limit.ts), which is why this needs a
+// Supabase client, unlike a truly stateless proxy.
 //
 // Auth: Supabase's Edge Function gateway verifies the caller's JWT by
 // default (deploy WITHOUT --no-verify-jwt to keep that on), so by the time
 // this code runs, the caller is already a signed-in user of this app --
 // that's what keeps random internet traffic from burning our free Gemini
-// quota.
+// quota. The client below acts AS that user (their JWT forwarded), same
+// pattern as generate-outfit and suggest-wardrobe-gaps.
 
-import { corsHeaders } from '../_shared/cors.ts';
+import { createClient } from 'npm:@supabase/supabase-js@2';
+
 import { CLOTHING_CATEGORIES, SEASONS } from '../_shared/clothing-schema.ts';
+import { corsHeaders } from '../_shared/cors.ts';
 import { generateJson } from '../_shared/gemini.ts';
+import { checkRateLimit, logAiCall } from '../_shared/rate-limit.ts';
 
 // Keep inline image payloads well under Gemini's 20MB request limit and
 // fast to upload over a phone connection. The app resizes/compresses photos
 // before sending (see src/app/(tabs)/add-item.tsx), so this is a safety net,
 // not the primary control.
 const MAX_BASE64_LENGTH = 8_000_000; // ~6MB of actual image data
+const RATE_LIMIT_PER_DAY = 40;
+const FUNCTION_NAME = 'tag-clothing-item';
 
 const PROMPT = `You are tagging a photo of a single clothing item for a wardrobe app.
 Look closely at the image, including any text, logos, graphics, team names,
@@ -79,6 +87,32 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: 'Use POST.' }, 405);
   }
 
+  // ---- Auth: act as the calling user, so the rate-limit check below is
+  // naturally scoped by RLS to their own ai_call_log rows. ----
+  const authHeader = req.headers.get('Authorization');
+  const supabaseUrl = Deno.env.get('SUPABASE_URL');
+  const supabaseKey =
+    Deno.env.get('SUPABASE_PUBLISHABLE_KEY') ??
+    Deno.env.get('SUPABASE_ANON_KEY') ??
+    req.headers.get('apikey');
+  if (!authHeader || !supabaseUrl || !supabaseKey) {
+    return jsonResponse({ error: 'Not signed in.' }, 401);
+  }
+
+  const supabase = createClient(supabaseUrl, supabaseKey, {
+    global: { headers: { Authorization: authHeader } },
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+
+  const { data: userData, error: userError } = await supabase.auth.getUser(
+    authHeader.replace(/^Bearer\s+/i, ''),
+  );
+  if (userError || !userData.user) return jsonResponse({ error: 'Not signed in.' }, 401);
+  const userId = userData.user.id;
+
+  const rateCheck = await checkRateLimit(supabase, userId, FUNCTION_NAME, RATE_LIMIT_PER_DAY);
+  if (!rateCheck.allowed) return jsonResponse({ error: rateCheck.retryMessage }, 429);
+
   let imageBase64: unknown;
   try {
     const body = await req.json();
@@ -135,6 +169,7 @@ Deno.serve(async (req) => {
       502,
     );
   }
+  await logAiCall(supabase, userId, FUNCTION_NAME);
 
   return jsonResponse(result.value);
 });

@@ -253,6 +253,29 @@ alter table public.outfits add column if not exists ai_reason text;
 -- tee or team logo) instead of just category + color.
 alter table public.clothing_items add column if not exists title text;
 
+-- Rate limiting for the AI Edge Functions: one row per successful call, so
+-- each function can check "how many times has this user called me in the
+-- last 24h?" before spending Gemini quota. Without this, a UI bug or someone
+-- rapid-tapping a button could exhaust the free-tier daily quota and break
+-- the app for everyone until it resets -- worst case, mid-demo.
+create table if not exists public.ai_call_log (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.users(id) on delete cascade,
+  function_name text not null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists ai_call_log_user_function_created_idx
+  on public.ai_call_log (user_id, function_name, created_at);
+
+alter table public.ai_call_log enable row level security;
+
+drop policy if exists "own ai call log" on public.ai_call_log;
+create policy "own ai call log" on public.ai_call_log
+  for all to authenticated
+  using ((select auth.uid()) = user_id)
+  with check ((select auth.uid()) = user_id);
+
 
 -- =====================================================================
 -- 6. HOW TO TEST ROW LEVEL SECURITY (manual; leave commented out)

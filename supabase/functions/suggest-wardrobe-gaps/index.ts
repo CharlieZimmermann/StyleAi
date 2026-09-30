@@ -18,8 +18,11 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 import { CLOTHING_CATEGORIES } from '../_shared/clothing-schema.ts';
 import { corsHeaders } from '../_shared/cors.ts';
 import { generateJson } from '../_shared/gemini.ts';
+import { checkRateLimit, logAiCall } from '../_shared/rate-limit.ts';
 
 const MAX_SUGGESTIONS = 8;
+const RATE_LIMIT_PER_DAY = 10;
+const FUNCTION_NAME = 'suggest-wardrobe-gaps';
 
 // Plain-language examples for the prompt -- "hat" and "accessory" especially
 // are broad buckets the model won't reliably unpack on its own otherwise.
@@ -122,6 +125,9 @@ Deno.serve(async (req) => {
   if (userError || !userData.user) return jsonResponse({ error: 'Not signed in.' }, 401);
   const userId = userData.user.id;
 
+  const rateCheck = await checkRateLimit(supabase, userId, FUNCTION_NAME, RATE_LIMIT_PER_DAY);
+  if (!rateCheck.allowed) return jsonResponse({ error: rateCheck.retryMessage }, 429);
+
   const apiKey = Deno.env.get('GEMINI_API_KEY');
   if (!apiKey) {
     console.error('GEMINI_API_KEY is not set for this Edge Function.');
@@ -202,6 +208,7 @@ preferred brands is a good fit; otherwise leave it out.`;
       502,
     );
   }
+  await logAiCall(supabase, userId, FUNCTION_NAME);
 
   // ---- Save: replace the previous batch of active suggestions. Dismissed
   // and purchased ones are untouched -- they're history, not clutter. ----
