@@ -298,6 +298,8 @@ export default function ClosetScreen() {
             <FlatList
               data={savedOutfits}
               keyExtractor={(outfit) => outfit.id}
+              refreshing={savedLoading}
+              onRefresh={loadSaved}
               contentContainerStyle={[styles.savedList, { paddingBottom: BottomTabInset + Spacing.four }]}
               ItemSeparatorComponent={() => <ThemedView style={styles.savedSeparator} />}
               renderItem={({ item }) => (
@@ -341,6 +343,8 @@ export default function ClosetScreen() {
               <FlatList
                 data={suggestions}
                 keyExtractor={(item) => item.id}
+                refreshing={wishlistLoading}
+                onRefresh={loadWishlist}
                 contentContainerStyle={[styles.savedList, { paddingBottom: BottomTabInset + Spacing.four }]}
                 ItemSeparatorComponent={() => <ThemedView style={styles.savedSeparator} />}
                 renderItem={({ item, index }) => (

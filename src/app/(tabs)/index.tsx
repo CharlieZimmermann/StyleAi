@@ -1,7 +1,7 @@
 import * as Location from 'expo-location';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, TextInput } from 'react-native';
+import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ExternalLink } from '@/components/external-link';
@@ -55,6 +55,7 @@ export default function TodayScreen() {
   const [eventGenerating, setEventGenerating] = useState(false);
   const [eventError, setEventError] = useState<string | null>(null);
   const [eventOutfits, setEventOutfits] = useState<Outfit[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Refs, not state, so the callbacks below stay stable. A callback whose
   // identity changed every time `outfit` changed would make useFocusEffect
@@ -148,6 +149,15 @@ export default function TodayScreen() {
     }, [load, loadEventOutfits]),
   );
 
+  async function handleRefresh() {
+    setRefreshing(true);
+    try {
+      await Promise.all([load(), loadEventOutfits()]);
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
   // Buttons go through here so a double-tap can't start two generations.
   async function runGenerate(options: { regenerate?: boolean; city?: string } = {}) {
     if (busy.current) return;
@@ -206,7 +216,14 @@ export default function TodayScreen() {
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
         <ScrollView
-          contentContainerStyle={[styles.content, { paddingBottom: BottomTabInset + Spacing.four }]}>
+          contentContainerStyle={[styles.content, { paddingBottom: BottomTabInset + Spacing.four }]}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor={theme.textSecondary}
+            />
+          }>
           <ThemedText type="title" style={styles.header}>
             Today
           </ThemedText>
