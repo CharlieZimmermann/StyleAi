@@ -1,3 +1,4 @@
+import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { SymbolView } from 'expo-symbols';
 import { useState } from 'react';
@@ -11,6 +12,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { AnimatedPressable } from '@/components/animated-pressable';
+import { Skeleton } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { CardShadow, Spacing } from '@/constants/theme';
@@ -27,6 +29,35 @@ type Props = {
   onChange?: (next: Outfit) => void;
   showWeather?: boolean;
 };
+
+/** Placeholder shaped like OutfitCard, for while an outfit is still
+ * loading/generating -- previews the eventual layout instead of a bare
+ * spinner floating in empty space. */
+export function OutfitCardSkeleton() {
+  return (
+    <ThemedView style={styles.wrapper}>
+      <Skeleton height={52} borderRadius={Spacing.three} style={CardShadow} />
+      <ThemedView style={styles.grid}>
+        {[0, 1, 2, 3].map((i) => (
+          <ThemedView key={i} style={[styles.itemCard, CardShadow]}>
+            <ThemedView type="backgroundElement" style={styles.itemCardInner}>
+              <Skeleton style={styles.itemImage} borderRadius={0} />
+              <ThemedView style={styles.itemLabel}>
+                <Skeleton height={13} width="70%" />
+                <Skeleton height={11} width="45%" />
+              </ThemedView>
+            </ThemedView>
+          </ThemedView>
+        ))}
+      </ThemedView>
+      <Skeleton height={44} borderRadius={Spacing.three} style={CardShadow} />
+      <ThemedView style={styles.actionRow}>
+        <Skeleton height={48} borderRadius={Spacing.two} style={styles.wearButton} />
+        <Skeleton width={48} height={48} borderRadius={Spacing.two} />
+      </ThemedView>
+    </ThemedView>
+  );
+}
 
 /** One outfit: its items, the AI's reason, and Wear/Save actions. Reused by
  * the Today tab (daily + event outfits) and the Closet tab's Saved section.
@@ -59,6 +90,7 @@ export function OutfitCard({ outfit, onChange, showWeather = false }: Props) {
     setSaving(true);
     // .set(), not .value = -- see the note in animated-pressable.tsx.
     starScale.set(withSequence(withSpring(1.35, { damping: 8 }), withSpring(1, { damping: 10 })));
+    void Haptics.selectionAsync();
     try {
       const next = !outfit.isSaved;
       await setOutfitSaved(outfit.id, next);
@@ -151,6 +183,7 @@ export function OutfitCard({ outfit, onChange, showWeather = false }: Props) {
           style={styles.saveButton}
           onPress={handleToggleSaved}
           disabled={saving}
+          haptic={false}
           accessibilityLabel={outfit.isSaved ? 'Unsave outfit' : 'Save outfit'}>
           {saving ? (
             <ActivityIndicator />

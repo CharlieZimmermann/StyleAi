@@ -2,12 +2,13 @@ import { Image } from 'expo-image';
 import { SymbolView } from 'expo-symbols';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, useWindowDimensions } from 'react-native';
+import { Alert, FlatList, Pressable, StyleSheet, useWindowDimensions } from 'react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AnimatedPressable } from '@/components/animated-pressable';
 import { PrimaryButton } from '@/components/primary-button';
+import { Skeleton } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, CardShadow, Spacing } from '@/constants/theme';
@@ -85,8 +86,18 @@ export default function BuildOutfitScreen() {
         </ThemedText>
 
         {loading ? (
-          <ThemedView style={styles.centered}>
-            <ActivityIndicator />
+          <ThemedView style={[styles.grid, styles.skeletonGrid]}>
+            {[0, 1, 2, 3, 4, 5].map((i) => (
+              <ThemedView key={i} style={{ width: cardWidth }}>
+                <ThemedView type="backgroundElement" style={styles.card}>
+                  <Skeleton style={styles.cardImage} borderRadius={0} />
+                  <ThemedView style={styles.cardLabel}>
+                    <Skeleton height={13} width="70%" />
+                    <Skeleton height={11} width="45%" />
+                  </ThemedView>
+                </ThemedView>
+              </ThemedView>
+            ))}
           </ThemedView>
         ) : loadError ? (
           <ThemedView style={styles.centered}>
@@ -197,6 +208,10 @@ const styles = StyleSheet.create({
   grid: {
     paddingHorizontal: Spacing.three,
     gap: Spacing.three,
+  },
+  skeletonGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
   },
   card: {
     borderRadius: Spacing.three,

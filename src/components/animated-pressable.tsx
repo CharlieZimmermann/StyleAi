@@ -1,3 +1,4 @@
+import * as Haptics from 'expo-haptics';
 import { Pressable, type PressableProps } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
@@ -12,16 +13,25 @@ type Props = Omit<PressableProps, 'style'> & {
     : PressableProps['style'];
   /** How much to shrink on press. 1 = no shrink. */
   scaleTo?: number;
+  /** Set false to skip the press-in haptic (e.g. an item already using a stronger one of its own). */
+  haptic?: boolean;
 };
 
 /**
  * A drop-in Pressable that compresses slightly on touch and springs back on
  * release -- basic tactile feedback the app otherwise has none of (every
  * button here previously only visually changed for a *disabled* state, never
- * for an ordinary press). Swap in wherever a screen's primary/destructive
- * action button is, first.
+ * for an ordinary press). Also fires a light haptic on press-in. Swap in
+ * wherever a screen's primary/destructive action button is, first.
  */
-export function AnimatedPressable({ scaleTo = 0.96, onPressIn, onPressOut, style, ...rest }: Props) {
+export function AnimatedPressable({
+  scaleTo = 0.96,
+  haptic = true,
+  onPressIn,
+  onPressOut,
+  style,
+  ...rest
+}: Props) {
   const scale = useSharedValue(1);
   // .get()/.set(), not .value -- React Compiler's immutability analysis
   // (app.json has experiments.reactCompiler on) doesn't know Reanimated's
@@ -35,6 +45,7 @@ export function AnimatedPressable({ scaleTo = 0.96, onPressIn, onPressOut, style
       style={[animatedStyle, style]}
       onPressIn={(event) => {
         scale.set(withSpring(scaleTo, SPRING));
+        if (haptic) void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         onPressIn?.(event);
       }}
       onPressOut={(event) => {

@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AnimatedIcon } from '@/components/animated-icon';
 import { AnimatedPressable } from '@/components/animated-pressable';
 import { PrimaryButton } from '@/components/primary-button';
+import { Skeleton } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, CardShadow, MaxContentWidth, Spacing } from '@/constants/theme';
@@ -157,7 +158,14 @@ export default function AccountScreen() {
             </ThemedText>
 
             {loadingPrefs ? (
-              <ActivityIndicator style={styles.prefsLoading} />
+              <ThemedView style={styles.prefsLoading}>
+                <ThemedView style={styles.budgetRow}>
+                  <Skeleton height={44} borderRadius={Spacing.two} style={styles.budgetInput} />
+                  <Skeleton height={44} borderRadius={Spacing.two} style={styles.budgetInput} />
+                </ThemedView>
+                <Skeleton height={44} borderRadius={Spacing.two} />
+                <Skeleton height={44} borderRadius={Spacing.two} />
+              </ThemedView>
             ) : (
               <>
                 <ThemedText type="small">Budget per item</ThemedText>
@@ -291,6 +299,7 @@ const styles = StyleSheet.create({
   },
   prefsLoading: {
     marginVertical: Spacing.three,
+    gap: Spacing.three,
   },
   budgetRow: {
     flexDirection: 'row',

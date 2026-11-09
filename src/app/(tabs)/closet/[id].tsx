@@ -2,11 +2,12 @@ import { Image } from 'expo-image';
 import { SymbolView } from 'expo-symbols';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, TextInput } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AnimatedPressable } from '@/components/animated-pressable';
 import { PrimaryButton } from '@/components/primary-button';
+import { Skeleton } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
@@ -115,8 +116,18 @@ export default function ItemDetailScreen() {
         </ThemedView>
 
         {loading ? (
-          <ThemedView style={styles.centered}>
-            <ActivityIndicator />
+          <ThemedView style={styles.scrollContent}>
+            <Skeleton style={styles.preview} borderRadius={Spacing.three} />
+            <ThemedView style={styles.form}>
+              <Skeleton height={13} width="20%" />
+              <Skeleton height={44} borderRadius={Spacing.two} />
+              <Skeleton height={13} width="25%" />
+              <ThemedView style={styles.chipWrap}>
+                {[60, 80, 70, 90].map((w, i) => (
+                  <Skeleton key={i} height={32} width={w} borderRadius={Spacing.five} />
+                ))}
+              </ThemedView>
+            </ThemedView>
           </ThemedView>
         ) : loadError || !item ? (
           <ThemedView style={styles.centered}>

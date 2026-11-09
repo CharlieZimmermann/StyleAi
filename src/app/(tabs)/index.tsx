@@ -1,11 +1,11 @@
 import * as Location from 'expo-location';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, TextInput } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ExternalLink } from '@/components/external-link';
-import { OutfitCard } from '@/components/outfit-card';
+import { OutfitCard, OutfitCardSkeleton } from '@/components/outfit-card';
 import { PrimaryButton } from '@/components/primary-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -215,12 +215,14 @@ export default function TodayScreen() {
           </ThemedText>
 
           {(status === 'loading' || status === 'generating') && (
-            <ThemedView style={styles.centered}>
-              <ActivityIndicator />
-              <ThemedText type="small" themeColor="textSecondary" style={styles.centerText}>
-                {status === 'generating' ? 'Checking the weather and picking an outfit...' : 'Loading...'}
-              </ThemedText>
-            </ThemedView>
+            <>
+              {status === 'generating' && (
+                <ThemedText type="small" themeColor="textSecondary" style={styles.centerText}>
+                  Checking the weather and picking an outfit...
+                </ThemedText>
+              )}
+              <OutfitCardSkeleton />
+            </>
           )}
 
           {status === 'empty-closet' && (

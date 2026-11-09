@@ -1,13 +1,15 @@
+import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Linking, Pressable, StyleSheet, useWindowDimensions } from 'react-native';
-import Animated, { FadeInUp } from 'react-native-reanimated';
+import { Alert, FlatList, Linking, Pressable, StyleSheet, useWindowDimensions } from 'react-native';
+import Animated, { FadeIn, FadeInUp } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AnimatedPressable } from '@/components/animated-pressable';
-import { OutfitCard } from '@/components/outfit-card';
+import { OutfitCard, OutfitCardSkeleton } from '@/components/outfit-card';
 import { PrimaryButton } from '@/components/primary-button';
+import { Skeleton } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, CardShadow, Spacing } from '@/constants/theme';
@@ -155,8 +157,12 @@ export default function ClosetScreen() {
               <AnimatedPressable
                 key={value}
                 scaleTo={0.97}
+                haptic={false}
                 style={styles.segmentButton}
-                onPress={() => setSegment(value)}>
+                onPress={() => {
+                  if (value !== segment) void Haptics.selectionAsync();
+                  setSegment(value);
+                }}>
                 <ThemedView
                   type={active ? 'backgroundSelected' : 'backgroundElement'}
                   style={styles.segmentInner}>
@@ -169,6 +175,7 @@ export default function ClosetScreen() {
           })}
         </ThemedView>
 
+        <Animated.View key={segment} entering={FadeIn.duration(200)} style={styles.segmentContent}>
         {segment === 'items' ? (
           <>
             <Pressable style={styles.buildOutfitRow} onPress={() => router.push('/closet/build-outfit')}>
@@ -198,8 +205,18 @@ export default function ClosetScreen() {
             />
 
             {itemsLoading ? (
-              <ThemedView style={styles.centered}>
-                <ActivityIndicator />
+              <ThemedView style={[styles.grid, styles.skeletonGrid]}>
+                {[0, 1, 2, 3, 4, 5].map((i) => (
+                  <ThemedView key={i} style={{ width: cardWidth }}>
+                    <ThemedView type="backgroundElement" style={styles.card}>
+                      <Skeleton style={styles.cardImage} borderRadius={0} />
+                      <ThemedView style={styles.cardLabel}>
+                        <Skeleton height={13} width="70%" />
+                        <Skeleton height={11} width="45%" />
+                      </ThemedView>
+                    </ThemedView>
+                  </ThemedView>
+                ))}
               </ThemedView>
             ) : itemsError ? (
               <ThemedView style={styles.centered}>
@@ -262,8 +279,8 @@ export default function ClosetScreen() {
           </>
         ) : segment === 'saved' ? (
           savedLoading ? (
-            <ThemedView style={styles.centered}>
-              <ActivityIndicator />
+            <ThemedView style={styles.savedList}>
+              <OutfitCardSkeleton />
             </ThemedView>
           ) : savedError ? (
             <ThemedView style={styles.centered}>
@@ -305,8 +322,14 @@ export default function ClosetScreen() {
             )}
 
             {wishlistLoading ? (
-              <ThemedView style={styles.centered}>
-                <ActivityIndicator />
+              <ThemedView style={[styles.savedList, styles.skeletonStack]}>
+                {[0, 1, 2].map((i) => (
+                  <ThemedView key={i} type="backgroundElement" style={[styles.suggestionCard, CardShadow]}>
+                    <Skeleton height={14} width="60%" />
+                    <Skeleton height={12} width="35%" />
+                    <Skeleton height={12} width="90%" />
+                  </ThemedView>
+                ))}
               </ThemedView>
             ) : suggestions.length === 0 && !wishlistError ? (
               <ThemedView style={styles.centered}>
@@ -353,6 +376,7 @@ export default function ClosetScreen() {
             )}
           </>
         )}
+        </Animated.View>
       </SafeAreaView>
     </ThemedView>
   );
@@ -386,6 +410,9 @@ const styles = StyleSheet.create({
     borderRadius: Spacing.five,
     alignItems: 'center',
   },
+  segmentContent: {
+    flex: 1,
+  },
   buildOutfitRow: {
     paddingHorizontal: Spacing.four,
     paddingBottom: Spacing.two,
@@ -403,6 +430,13 @@ const styles = StyleSheet.create({
   grid: {
     paddingHorizontal: Spacing.three,
     gap: Spacing.three,
+  },
+  skeletonGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  skeletonStack: {
+    gap: Spacing.four,
   },
   card: {
     borderRadius: Spacing.three,
