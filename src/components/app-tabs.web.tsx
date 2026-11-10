@@ -1,3 +1,4 @@
+import type { ComponentRef, Ref } from 'react';
 import {
   Tabs,
   TabList,
@@ -37,9 +38,16 @@ export default function AppTabs() {
   );
 }
 
-export function TabButton({ children, isFocused, ...props }: TabTriggerSlotProps) {
+export function TabButton({ children, isFocused, ref, ...props }: TabTriggerSlotProps) {
   return (
-    <Pressable {...props} style={({ pressed }) => pressed && styles.pressed}>
+    <Pressable
+      {...props}
+      // expo-router types this ref as React.RefAttributes<View>, which
+      // predates RN 0.88's switch to a function-component-typed View/
+      // Pressable (the real ref target is now a host instance, not View) --
+      // an upstream type gap, not a runtime mismatch.
+      ref={ref as Ref<ComponentRef<typeof Pressable>>}
+      style={({ pressed }) => pressed && styles.pressed}>
       <ThemedView
         type={isFocused ? 'backgroundSelected' : 'backgroundElement'}
         style={styles.tabButtonView}>

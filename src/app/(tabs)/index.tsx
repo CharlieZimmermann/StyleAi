@@ -30,7 +30,7 @@ async function resolveLocation(userId: string): Promise<WeatherLocation | null> 
     if (permission.granted) {
       // Low accuracy (city-level) is plenty for weather, and faster.
       const position = await Location.getCurrentPositionAsync({
-        accuracy: Location.LocationAccuracy.Low,
+        accuracy: Location.Accuracy.Low,
       });
       return { latitude: position.coords.latitude, longitude: position.coords.longitude };
     }
