@@ -2,6 +2,11 @@
 // 10,000 calls/day for non-commercial use, CC BY 4.0 -- the app shows the
 // required attribution.
 
+// A hung request here (rather than a clean error) would block
+// generate-outfit before it even gets to Gemini, with no feedback to the
+// user -- Open-Meteo is normally sub-second, so 10s is generous headroom.
+const FETCH_TIMEOUT_MS = 10_000;
+
 export type WeatherSnapshot = {
   temperatureF: number;
   feelsLikeF: number;
@@ -45,7 +50,7 @@ export async function geocodeCity(
   url.searchParams.set('language', 'en');
   url.searchParams.set('format', 'json');
 
-  const response = await fetch(url);
+  const response = await fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
   if (!response.ok) throw new Error(`Location lookup failed (${response.status}).`);
 
   const result = (await response.json()).results?.[0];
@@ -79,7 +84,7 @@ export async function fetchWeather(
   url.searchParams.set('timezone', 'auto');
   url.searchParams.set('forecast_days', '1');
 
-  const response = await fetch(url);
+  const response = await fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
   if (!response.ok) throw new Error(`Weather lookup failed (${response.status}).`);
 
   const data = await response.json();

@@ -44,6 +44,10 @@ type GapSuggestionsResult = { count: number };
  * (dismissed/purchased ones are untouched), so call listWishlistSuggestions
  * again afterward.
  */
+// Sized above the function's own worst case (4 Gemini models x 15s timeout
+// each) -- see supabase/functions/_shared/gemini.ts.
+const GAPS_TIMEOUT_MS = 70_000;
+
 export async function generateWishlistSuggestions(): Promise<GapSuggestionsResult> {
-  return invokeFunction<GapSuggestionsResult>('suggest-wardrobe-gaps', {});
+  return invokeFunction<GapSuggestionsResult>('suggest-wardrobe-gaps', {}, GAPS_TIMEOUT_MS);
 }

@@ -29,6 +29,13 @@ const SLOT_ORDER: Record<string, number> = {
 
 type GeneratedOutfit = { outfitId: string };
 
+// Sized above the function's own worst case: a weather/geocoding lookup
+// (10s timeout each) plus, when avoidItemIds is set, up to two full passes
+// through the 4-model Gemini fallback chain (15s timeout each) if the first
+// pass can't find anything different -- see generate-outfit/index.ts and
+// supabase/functions/_shared/gemini.ts.
+const GENERATE_TIMEOUT_MS = 150_000;
+
 /**
  * Asks the generate-outfit Edge Function for an outfit and returns it fully
  * loaded. With no eventPrompt this is today's daily outfit (replacing any
@@ -40,12 +47,16 @@ export async function generateOutfit(options: {
   eventPrompt?: string;
   avoidItemIds?: string[];
 }): Promise<Outfit> {
-  const generated = await invokeFunction<GeneratedOutfit>('generate-outfit', {
-    ...options.location,
-    localDate: localDateString(),
-    eventPrompt: options.eventPrompt,
-    avoidItemIds: options.avoidItemIds,
-  });
+  const generated = await invokeFunction<GeneratedOutfit>(
+    'generate-outfit',
+    {
+      ...options.location,
+      localDate: localDateString(),
+      eventPrompt: options.eventPrompt,
+      avoidItemIds: options.avoidItemIds,
+    },
+    GENERATE_TIMEOUT_MS,
+  );
   return loadOutfit(generated.outfitId);
 }
 

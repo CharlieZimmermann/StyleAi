@@ -14,6 +14,13 @@ const GEMINI_MODELS = [
   'gemini-3.1-flash-lite',
 ];
 
+// Per-model request timeout. Without this, a hung/overloaded model (rather
+// than one that cleanly errors) blocks the whole fallback chain indefinitely
+// instead of moving on -- this is what turned into multi-minute hangs with no
+// feedback. 15s is generous for Gemini's usual 2-8s structured-JSON replies,
+// while keeping the chain's total worst case (4 models) bounded to a minute.
+const MODEL_TIMEOUT_MS = 15_000;
+
 // HTTP statuses where trying a different model can help. Anything else
 // (e.g. 400 bad request, 403 bad key) would fail on every model, so stop.
 const RETRYABLE_STATUSES = new Set([404, 429, 500, 503, 504]);
@@ -63,10 +70,12 @@ export async function generateJson<T>(options: {
           'x-goog-api-key': options.apiKey,
         },
         body,
+        signal: AbortSignal.timeout(MODEL_TIMEOUT_MS),
       });
     } catch (err) {
-      console.error(`Network error calling ${model}:`, err);
-      failures.push(`${model}: network error`);
+      const timedOut = err instanceof Error && err.name === 'TimeoutError';
+      console.error(`${timedOut ? 'Timed out calling' : 'Network error calling'} ${model}:`, err);
+      failures.push(`${model}: ${timedOut ? 'timed out' : 'network error'}`);
       continue;
     }
 
