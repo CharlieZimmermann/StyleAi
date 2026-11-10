@@ -33,5 +33,5 @@ jobs:
         with:
           deno-version: v2.x
 
-      - run: deno check supabase/functions/*/index.ts
-      - run: deno test supabase/functions/*/logic.test.ts
+      - run: deno check --config supabase/functions/deno.json supabase/functions/*/index.ts
+      - run: deno test --config supabase/functions/deno.json supabase/functions/*/logic.test.ts

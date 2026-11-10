@@ -25,14 +25,26 @@ polish, tests) before assuming a feature doesn't exist.
   Metro/the app runtime does) and `jest.setup.ts` (fake env vars, since
   `src/lib/supabase.ts` throws at import time without them, and Jest --
   unlike Expo's dev server -- doesn't load `.env.local`).
-- `npx --yes deno check supabase/functions/*/index.ts` — typecheck the Edge
-  Functions; they're Deno, not part of the app's `tsc` project (excluded in
-  `tsconfig.json`), so `npm run typecheck` does not cover them
-- `npx --yes deno test supabase/functions/*/logic.test.ts` — the Edge
-  Functions' own pure-logic tests. Each function's `index.ts` calls
-  `Deno.serve(...)` at module load time, so its testable logic lives in a
-  sibling `logic.ts` that `index.ts` imports from -- importing `index.ts`
-  itself in a test would start an actual server listener.
+- `npx --yes deno check --config supabase/functions/deno.json supabase/functions/*/index.ts` —
+  typecheck the Edge Functions; they're Deno, not part of the app's `tsc`
+  project (excluded in `tsconfig.json`), so `npm run typecheck` does not
+  cover them. The `--config` flag matters: without it, Deno's config search
+  starts at the repo root (the command's cwd) and walks upward, past
+  `supabase/functions/deno.json` entirely, so it falls back to
+  auto-detecting the root `package.json` as a workspace member and demands
+  a `node_modules/` directory for every npm specifier it finds there --
+  including the whole app's dependency tree, not just this function's own
+  `npm:@supabase/supabase-js@2`. That only "worked" locally because the
+  app's `node_modules` happened to already exist; CI's Edge Functions job
+  never runs `npm ci`, so it failed there even though it passed locally --
+  always use the `--config` flag (and keep `supabase/functions/deno.lock`,
+  not a root `deno.lock`, as the lockfile) so this stays self-contained.
+- `npx --yes deno test --config supabase/functions/deno.json supabase/functions/*/logic.test.ts` —
+  the Edge Functions' own pure-logic tests (same `--config` reasoning as
+  above). Each function's `index.ts` calls `Deno.serve(...)` at module load
+  time, so its testable logic lives in a sibling `logic.ts` that `index.ts`
+  imports from -- importing `index.ts` itself in a test would start an
+  actual server listener.
 - `npx expo start` — dev server (interactive; not something to run and wait
   on non-interactively)
 - `.github/workflows/ci.yml` runs all of the above on every push/PR to `main`
